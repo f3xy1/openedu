@@ -1,0 +1,18 @@
+# Игнорирование папок сборки и временных файлов
+bin/
+obj/
+temp/
+tmp/
+.vs/
+packages/
+TestResults/
+logs/
+*.log
+*.user
+*.suo
+*.cache
+*.tmp
+*.temp
+*~
+*.bak
+*.backup

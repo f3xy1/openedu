@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "OpenEdu Helper",
+  "version": "1.5",
+  "description": "Помощник для прохождения тестов на openedu.ru",
+  "permissions": [],
+  "content_scripts": [
+    {
+      "matches": ["*://*.openedu.ru/*"],
+      "js": ["content.js"],
+      "all_frames": true 
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["answers.json"],
+      "matches": ["*://*.openedu.ru/*"]
+    }
+  ]
+}
