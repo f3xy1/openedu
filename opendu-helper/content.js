@@ -1,64 +1,72 @@
-console.log("🚀 OpenEdu Helper v6.6 ЗАПУЩЕН! (кроссворды, задания с публикацией, таблицы на сопоставление)");
+// Версия видна в консоли страницы и доступна отладчику: по ней легко
+// убедиться, что на вкладке работает именно этот файл, а не старый.
+const SCRIPT_VERSION = 'v7.0';
+console.log(`🚀 OpenEdu Helper ${SCRIPT_VERSION} ЗАПУЩЕН! (снятые ответы копятся в наборе расширения)`);
 
-// Все дефисы и тире: ASCII-дефис, типографские, неразрывный, минус.
-// Записаны кодами, а не символами, — чтобы в файле не завелось невидимых знаков.
-const DASH_CHARS = '\u002D\u2010\u2011\u2012\u2013\u2014\u2015\u2212';
-const SOFT_HYPHEN_RE = new RegExp(`(?<=\\p{L})[${DASH_CHARS}](?=\\p{L})`, 'gu');
-const DASH_RE = new RegExp(`[${DASH_CHARS}]`, 'g');
+// Правила сравнения текста (нормализация, кавычки, формулы, ключи) живут в
+// normalize.js: он подключается в manifest.json ПЕРЕД content.js и делит с ним
+// область видимости. Объявлять здесь те же имена нельзя — будет «Identifier
+// has already been declared», — поэтому своих копий normalizeText и cleanText
+// тут больше нет. Копии были, и именно их расхождение с питоновскими
+// скриптами порождало дубликаты в базе.
+//
+// Отсюда доступны: normalizeText, cleanText, keyText, solidText, solidUsable,
+// SOLID_MIN_LEN, foldText.
 
-// Платформа рвёт длинные слова по ширине окна и вставляет дефис: «сообще-ния»,
-// «про-блемных», «Ин-тернет». Ширина окна у каждого своя, поэтому в базе и на
-// странице одно и то же слово может оказаться с дефисом и без — и точное
-// сравнение строк ломается. Дефис между двумя буквами считаем мягким переносом
-// и убираем с ОБЕИХ сторон, тогда варианты совпадают.
-// Дефисы в составных словах («масс-медиа») убираются заодно — это лечит и
-// разнобой в написании одного слова (в базе встречается и «массмедиа»).
-function stripSoftHyphens(text) {
-    return text.replace(SOFT_HYPHEN_RE, '');
-}
-
-// Оставшиеся тире (те, что стоят между словами и переносом не являются) тоже
-// надо уравнять. Один и тот же вопрос платформа рисует по-разному в разных
-// виджетах: в радио «Термин «дуалог» – это» (тире U+2013), а в выпадающем
-// списке «Термин «дуалог» - это» (обычный дефис). База пришла из docx, там
-// типографское тире — без этой замены вопрос не находится.
-function normalizeDashes(text) {
-    return text.replace(DASH_RE, '-');
-}
-
-function normalizeText(text) {
-    if (typeof text !== 'string' || !text) return '';
-    const cleanedText = normalizeDashes(stripSoftHyphens(text))
-        .replace(/[\s⬜⬛⚪⚫]+/g, ' ').trim().toLowerCase();
-    return cleanedText;
+// ── формы текста ───────────────────────────────────────────────────────────
+// Текст страницы прогоняется через нормализацию ОДИН раз на блок, а не по
+// разу на каждую запись базы: normalizeText делает NFKC и десяток регулярок,
+// и на 708 записях это стало бы заметно на каждой перерисовке.
+//
+// key — с пробелами (пунктуация снята, кавычки сведены, формулы свёрнуты);
+// solid — то же без пробелов, чтобы не мешала вёрстка, разбившая вопрос по
+// строкам. Сначала пробуем key: она консервативнее, случайных вхождений в ней
+// меньше. solid — вторая попытка для тех же данных.
+function textForms(raw) {
+    return { key: keyText(raw), solid: solidText(raw) };
 }
 
 // ── поиск вопроса в базе ───────────────────────────────────────────────────
-// Возвращает {score, data}. Вопрос из базы может быть записан через '...' —
-// тогда на странице должны найтись ВСЕ части (см. ситуационные задачи).
-function bestByQuestion(pageText, answersData) {
+// Возвращает {score, data}. Сравниваются не строки как есть, а КЛЮЧИ вопроса
+// (keyText/solidText из normalize.js): кавычки, тире и разметка формул на ключ
+// не влияют. Поэтому вопрос с «ёлочками» находится в базе, где кавычки
+// обычные, а вопрос с формулой — в базе, где она записана LaTeX-ом. Раньше
+// сравнивались строки как есть, и на этом всё и рвалось: задание получало
+// крестик.
+//
+// Сначала сравниваем по ключу с пробелами (он консервативнее), и только потом
+// по слитному: тот не чувствителен к тому, как вёрстка разбила вопрос по
+// строкам, но и лишнее находит легче — поэтому он второй.
+function bestByQuestion(forms, records, index) {
     let best = { score: 0, data: null };
-    if (!pageText) return best;
-    answersData.forEach(item => {
-        const question = normalizeText(item.question);
-        if (!question) return;
-        let score = 0;
-        let isMatch = false;
-        if (question.includes('...')) {
-            const parts = question.split('...');
-            if (parts.every(part => pageText.includes(part.trim()))) {
-                isMatch = true;
-                score = parts.reduce((sum, part) => sum + part.length, 0);
-            }
-        } else if (pageText.includes(question)) {
-            isMatch = true;
-            score = question.length;
-        }
-        if (isMatch && score > best.score) {
-            best = { score, data: item };
-        }
+    if (!forms.key) return best;
+    records.forEach(item => {
+        const score = questionScore(forms, indexEntry(index, item));
+        if (score > best.score) best = { score, data: item };
     });
     return best;
+}
+
+// Сколько знаков вопроса нашлось на странице. У составного вопроса ('...')
+// обязаны найтись ВСЕ части: иначе под одним и тем же текстом может оказаться
+// ситуация, к которой этот ответ не относится.
+function questionScore(forms, entry) {
+    if (entry.parts) {
+        let score = 0;
+        for (const part of entry.parts) {
+            const hit = partHit(forms, part.key, part.solid);
+            if (!hit) return 0;
+            score += hit;
+        }
+        return score;
+    }
+    return partHit(forms, entry.key, entry.solid);
+}
+
+function partHit(forms, key, solid) {
+    if (key && forms.key.includes(key)) return key.length;
+    if (solid.length >= SOLID_MIN_LEN && forms.solid.includes(solid)) return solid.length;
+    return 0;
 }
 
 // У кроссворда ответ — объект «номер слова → слово». Такую запись нельзя
@@ -87,8 +95,276 @@ function isMatchingRecord(item) {
     return recordType(item) === 'matching';
 }
 
-function matchQuestion(pageText, answersData) {
-    return bestByQuestion(pageText, answersData.filter(item => recordType(item) === 'plain'));
+// ── индекс базы ────────────────────────────────────────────────────────────
+// Нормализованный вопрос и множество его слов считаются ОДИН раз на всю базу,
+// а не на каждую перерисовку: normalizeText — это NFKC и десяток регулярок, и
+// на 708 записях это стало бы заметно. Кэш сбрасывается по счётчику правок:
+// снятые со страницы записи дописываются в тот же массив.
+let baseVersion = 0;
+let indexCache = null;
+
+function baseIndex(answersData) {
+    if (indexCache && indexCache.version === baseVersion
+        && indexCache.data === answersData) {
+        return indexCache;
+    }
+    const byName = new Map();
+    // id задания — это id БЛОКА, а не вопроса: у задания из пяти выпадающих
+    // списков все пять записей делят один id. Поэтому значение — список.
+    const byId = new Map();
+    answersData.forEach(item => {
+        byName.set(item, makeEntry(item));
+        const id = item.problem_id;
+        if (!id) return;
+        if (!byId.has(id)) byId.set(id, []);
+        byId.get(id).push(item);
+    });
+    indexCache = { version: baseVersion, data: answersData, byName, byId };
+    return indexCache;
+}
+
+// Запись индекса по записи базы. Записи, которой в индексе ещё нет (её сняли
+// со страницы уже после сборки), считаем на месте и запоминаем.
+function indexEntry(index, item) {
+    let entry = index.byName.get(item);
+    if (!entry) {
+        entry = makeEntry(item);
+        index.byName.set(item, entry);
+    }
+    return entry;
+}
+
+function makeEntry(item) {
+    const question = item ? item.question : '';
+    const key = keyText(question);
+    return {
+        item,
+        key,
+        solid: solidText(question),
+        words: new Set(wordsOf(key)),
+        parts: questionParts(question)
+    };
+}
+
+// Составной вопрос: в базе он склеен из кусков через '...' (ситуационные
+// задачи). Резать надо ДО снятия пунктуации — keyText превращает точки в
+// пробелы и разделитель пропадает.
+// Пустые куски выбрасываем: у записи, которая ЗАКАНЧИВАЕТСЯ на '...', split
+// даёт пустую строку, а пустая строка находится в любом тексте — из-за этого
+// такая запись совпадала с КАЖДЫМ заданием на странице.
+function questionParts(question) {
+    const folded = normalizeText(question);
+    if (!folded.includes('...')) return null;
+    const parts = folded.split('...').map(part => part.trim()).filter(Boolean);
+    if (!parts.length) return null;
+    return parts.map(part => ({ key: keyText(part), solid: solidText(part) }));
+}
+
+function wordsOf(text) {
+    return String(text).split(' ').filter(Boolean);
+}
+
+// ── примерный поиск ────────────────────────────────────────────────────────
+// Врезается ТОЛЬКО если точный проход не нашёл ничего, то есть ровно там, где
+// раньше стоял крестик.
+//
+// Одного порога похожести мало, и это главное ограничение всей затеи: в базе
+// есть пары РАЗНЫХ вопросов, отличающихся одним знаком («сомкнутый строй —
+// это» и «разомкнутый строй — это» — это 0.75 похожести по словам). Поэтому
+// у приёмки три условия: порог, обязательный ОТРЫВ от второго кандидата и
+// вето по вариантам ответа. Плюс подстановка идёт только по клику и
+// показывается отдельным значком — неточное совпадение не должно спрятаться
+// за зелёной галочкой.
+const APPROX_MIN_SIM = 0.90;
+const APPROX_MIN_MARGIN = 0.03;
+const APPROX_SHORTLIST = 5;
+// Длиннее этого текст в примерное сравнение не берём: вопрос столько места
+// всё равно не занимает, а расстояние стоит O(длина вопроса × длина текста).
+const APPROX_MAX_TEXT = 20000;
+
+function maxDistanceFor(needle) {
+    return Math.max(4, Math.round(0.10 * needle.length));
+}
+
+// Мера Dice по множествам слов — ТОЛЬКО отбор кандидатов для дорогого
+// расстояния, не приёмка. Слова вопроса считаются один раз (в индексе), слова
+// блока — один раз на блок.
+function diceCoefficient(questionWords, blockWords) {
+    if (!questionWords.size || !blockWords.size) return 0;
+    let shared = 0;
+    questionWords.forEach(word => { if (blockWords.has(word)) shared += 1; });
+    return 2 * shared / (questionWords.size + blockWords.size);
+}
+
+// Расстояние Левенштейна между вопросом (needle) и ЛУЧШИМ ЕГО ВХОЖДЕНИЕМ в
+// текст (haystack). Обычное расстояние здесь бесполезно: между вопросом на
+// 100 знаков и блоком на 2000 знаков оно будет огромным даже при полном
+// совпадении. Поэтому начало и конец совпадения в тексте свободны: нулевая
+// строка матрицы обнулена, ответ — минимум по последней строке.
+//
+// Свободны, но НЕ ГДЕ УГОДНО: и начало, и конец обязаны попадать на границу
+// слова. Без этого ограничения вопрос ложится внутрь чужого слова — «сомкнутый
+// строй это» почти идеально совпадает с серединой «разомкнутый строй это»
+// (лишняя «с» в начале), и разные вопросы начинают выглядеть как один.
+// Границы в тексте — это пробелы: keyText уже превратил в пробелы всю
+// пунктуацию и схлопнул их, других разделителей в тексте не бывает.
+//
+// Обрыв по maxDist: минимум по строке не убывает с ростом i (из выравнивания
+// для i знаков всегда получается выравнивание для i-1 не дороже), поэтому
+// если строка стала дороже maxDist — считать дальше нечего.
+function substringDistance(needle, haystack, maxDist) {
+    const n = needle.length;
+    const m = haystack.length;
+    if (!n) return 0;
+    if (!m) return n;
+    if (m < n - maxDist) return n;
+    const SPACE = 32;
+    // Всё, что дороже maxDist, всё равно будет отброшено, поэтому «недостижимо»
+    // можно пометить числом чуть больше maxDist — переполнения не будет.
+    const unreachable = maxDist + 1;
+    let prev = new Int32Array(m + 1);
+    let cur = new Int32Array(m + 1);
+    for (let j = 0; j <= m; j++) {
+        prev[j] = (j === 0 || haystack.charCodeAt(j - 1) === SPACE) ? 0 : unreachable;
+    }
+    for (let i = 1; i <= n; i++) {
+        cur[0] = i;
+        const code = needle.charCodeAt(i - 1);
+        let rowMin = cur[0];
+        for (let j = 1; j <= m; j++) {
+            const cost = haystack.charCodeAt(j - 1) === code ? 0 : 1;
+            let best = prev[j - 1] + cost;
+            const del = prev[j] + 1;
+            if (del < best) best = del;
+            const ins = cur[j - 1] + 1;
+            if (ins < best) best = ins;
+            cur[j] = best;
+            if (best < rowMin) rowMin = best;
+        }
+        if (rowMin > maxDist) return rowMin;
+        const rotation = prev;
+        prev = cur;
+        cur = rotation;
+    }
+    let best = unreachable;
+    for (let j = 0; j <= m; j++) {
+        if (j !== m && haystack.charCodeAt(j) !== SPACE) continue;
+        if (prev[j] < best) best = prev[j];
+    }
+    return best;
+}
+
+function similarityOf(needle, haystack, maxDist) {
+    const distance = substringDistance(needle, haystack, maxDist);
+    return { distance, sim: 1 - distance / Math.max(needle.length, 1) };
+}
+
+// Лучший примерный кандидат по тексту блока.
+//   data — запись, прошедшая приёмку, либо null;
+//   near — похожие записи, приёмку не прошедшие: их показываем в подсказке,
+//          чтобы было видно разницу между «в базе нет» и «в базе есть, но
+//          совпадение неоднозначное».
+function bestApproximate(forms, records, body, index) {
+    if (!forms.key || forms.key.length > APPROX_MAX_TEXT) return { data: null, near: [] };
+    const blockWords = new Set(wordsOf(forms.key));
+
+    const shortlist = [];
+    records.forEach(item => {
+        if (isCrosswordRecord(item) || isMatchingRecord(item)) return;
+        const entry = indexEntry(index, item);
+        // Составные вопросы ('...') сравниваем только точно: в примерном
+        // сравнении их куски склеились бы в текст, которого на странице нет.
+        if (entry.parts || !entry.key) return;
+        shortlist.push({ entry, dice: diceCoefficient(entry.words, blockWords) });
+    });
+    shortlist.sort((a, b) => b.dice - a.dice);
+
+    const judged = [];
+    shortlist.slice(0, APPROX_SHORTLIST).forEach(candidate => {
+        const key = candidate.entry.key;
+        const maxDist = maxDistanceFor(key);
+        // Считаем с запасом: кандидат, не дотянувший до порога, всё равно
+        // должен попасть в список «похожих» и повлиять на отрыв.
+        const { distance, sim } = similarityOf(key, forms.key, maxDist * 2 + 4);
+        if (distance > maxDist * 2 + 4) return;
+        judged.push({ entry: candidate.entry, distance, sim });
+    });
+    judged.sort((a, b) => b.sim - a.sim);
+
+    const near = judged.slice(0, 3).map(candidate => candidate.entry.item);
+    const best = judged[0];
+    if (!best) return { data: null, near };
+    if (best.sim < APPROX_MIN_SIM || best.distance > maxDistanceFor(best.entry.key)) {
+        return { data: null, near };
+    }
+    if (judged.length > 1 && best.sim - judged[1].sim < APPROX_MIN_MARGIN) {
+        // Два кандидата неразличимы — подставлять одного из них нельзя.
+        return { data: null, near };
+    }
+    if (body && !answerFitsBlock(body, best.entry.item.answer)) {
+        return { data: null, near };
+    }
+    return { data: best.entry.item, sim: best.sim, near: [] };
+}
+
+// Вето по вариантам ответа: если в задании есть из чего выбирать (радио,
+// флажки, выпадающие списки), ответ кандидата обязан среди этих вариантов
+// найтись. Ответ, которого в задании нет, — заведомо чужой.
+// Вето намеренно узкое: срабатывает, если не нашлось НИ ОДНОГО значения
+// ответа, и только когда варианты в задании вообще есть. В задании с полями
+// ввода вариантов нет, и там вето не работает.
+function answerFitsBlock(body, answer) {
+    const choices = choiceTexts(body);
+    if (!choices.length) return true;
+    const values = (Array.isArray(answer) ? answer : [answer])
+        .filter(value => typeof value === 'string')
+        .map(normalizeText).filter(Boolean);
+    if (!values.length) return true;
+    return values.some(value => choices.some(choice => choice === value
+        || (value.length >= 3 && choice.includes(value))));
+}
+
+function choiceTexts(body) {
+    const texts = [];
+    body.querySelectorAll('option').forEach(option => {
+        const text = normalizeText(option.text);
+        if (text) texts.push(text);
+    });
+    body.querySelectorAll('label').forEach(label => {
+        const text = normalizeText(label.innerText);
+        if (text) texts.push(text);
+    });
+    return texts;
+}
+
+// Поиск ответа по тексту: сначала точное совпадение, потом примерное.
+//   quality — 'exact' (нашлось точно) или 'approx' (нашлось похоже).
+function findRecord(forms, records, body, index) {
+    const exact = bestByQuestion(forms, records, index);
+    if (exact.data) return { data: exact.data, quality: 'exact', near: [] };
+    const approx = bestApproximate(forms, records, body, index);
+    if (approx.data) {
+        return { data: approx.data, quality: 'approx', sim: approx.sim, near: [] };
+    }
+    return { data: null, quality: null, near: approx.near };
+}
+
+// Ближайший вариант ответа по расстоянию. Порог здесь выше, чем при поиске
+// вопроса, и отрыв обязателен: там неверное совпадение даёт ❌ или 🟠, а здесь
+// — молча подставленный неверный вариант ответа.
+const CHOICE_MIN_SIM = 0.92;
+const CHOICE_MIN_MARGIN = 0.10;
+
+function closestChoice(options, needle) {
+    const scored = options.map(option => {
+        const maxDist = Math.max(3, Math.round(0.10 * needle.length));
+        const { sim } = similarityOf(needle, normalizeText(option.text), maxDist);
+        return { option, sim };
+    }).sort((a, b) => b.sim - a.sim);
+    const best = scored[0];
+    if (!best || best.sim < CHOICE_MIN_SIM) return null;
+    if (scored.length > 1 && best.sim - scored[1].sim < CHOICE_MIN_MARGIN) return null;
+    return best.option;
 }
 
 // ── разбор блока на контролы ───────────────────────────────────────────────
@@ -233,12 +509,20 @@ function crosswordWord(word) {
 }
 
 function crosswordPlan(block, body, answersData) {
+    const index = baseIndex(answersData);
     const entries = crosswordEntries(body);
     const problemId = block.dataset.problemId || '';
     const crosswordData = answersData.filter(isCrosswordRecord);
-    let record = problemId ? crosswordData.find(item => item.problem_id === problemId) : null;
+    // id задания — ключ, который не зависит от того, как платформа отрисовала
+    // подсказки, поэтому он первый. Подпись из подсказок — запасной вариант:
+    // она выручит, если курс пересоберут и id поменяются.
+    let record = problemId
+        ? crosswordData.find(item => item.problem_id === problemId) || null
+        : null;
+    let quality = record ? 'byId' : null;
     if (!record) {
-        record = bestByQuestion(normalizeText(body.innerText), crosswordData).data;
+        record = bestByQuestion(textForms(body.innerText), crosswordData, index).data;
+        if (record) quality = 'exact';
     }
     const answers = record ? record.answer : null;
 
@@ -256,17 +540,21 @@ function crosswordPlan(block, body, answersData) {
         // длинное молча оборвётся.
         if (word && word.length === cells.length) {
             steps.push({ kind: 'crossword', elements: cells.map(cell => cell.input), answer: word });
-            cells.forEach((cell, index) => {
+            cells.forEach((cell, index_) => {
                 const key = `${cell.x},${cell.y}`;
                 if (!letters.has(key)) {
-                    letters.set(key, word[index]);
-                } else if (letters.get(key) !== word[index]) {
-                    conflicts.push({ cell: key, было: letters.get(key), стало: word[index], слово: number });
+                    letters.set(key, word[index_]);
+                } else if (letters.get(key) !== word[index_]) {
+                    conflicts.push({ cell: key, было: letters.get(key), стало: word[index_], слово: number });
                 }
             });
         }
     });
-    return { mode: 'crossword', steps, matched: steps.length, total: entries.size, conflicts };
+    // Приблизительного поиска у кроссворда и таблицы нет: их подпись — это
+    // склейка подсказок, и «похожая» подпись означала бы совсем другой
+    // кроссворд.
+    return { mode: 'crossword', steps, matched: steps.length, total: entries.size,
+             conflicts, approx: false, quality: quality ? [quality] : [] };
 }
 
 // Готовое решение со страницы: если кроссворд уже заполнен руками, его можно
@@ -338,13 +626,20 @@ function matchingItem(table, wanted) {
 }
 
 function matchingPlan(block, body, answersData) {
+    const index = baseIndex(answersData);
     const table = matchingTable(body);
     const problemId = block.dataset.problemId || '';
     const records = answersData.filter(isMatchingRecord);
-    let record = problemId ? records.find(item => item.problem_id === problemId) : null;
+    let record = problemId
+        ? records.find(item => item.problem_id === problemId) || null
+        : null;
+    let quality = record ? 'byId' : null;
     // Подпись — запасной вариант на случай пересборки курса: тогда записи
     // придётся перепривязать, но хотя бы одна из них найдётся по тексту.
-    if (!record) record = bestByQuestion(normalizeText(body.innerText), records).data;
+    if (!record) {
+        record = bestByQuestion(textForms(body.innerText), records, index).data;
+        if (record) quality = 'exact';
+    }
     const groups = record && record.answer && typeof record.answer === 'object' ? record.answer : {};
     const places = Object.keys(groups);
 
@@ -360,7 +655,8 @@ function matchingPlan(block, body, answersData) {
             missed.push(place);
         }
     });
-    return { mode: 'matching', steps, matched: steps.length, total: places.length || 1, missed };
+    return { mode: 'matching', steps, matched: steps.length, total: places.length || 1,
+             missed, approx: false, quality: quality ? [quality] : [] };
 }
 
 // Готовое решение со страницы: виджет хранит его в том же скрытом поле, так
@@ -377,6 +673,204 @@ function harvestMatching(table) {
     } catch (error) {
         return null;
     }
+}
+
+// ── снятие готового ответа со страницы ─────────────────────────────────────
+// Задание, которое пользователь уже решил, но которого нет в базе, можно
+// забрать целиком: платформа ответ проверила, значит он верный. Подпись
+// берём ТЕМИ ЖЕ кандидатами, которыми пользуется поиск ответа (labelOf и
+// stemBefore), иначе запись в базе ни с чем не сойдётся.
+
+// Как платформа оценила ответ. У «неверно» внутри есть «верн», поэтому
+// проверка на ошибку идёт первой.
+function statusOf(block) {
+    const status = block.querySelector('.status');
+    if (!status) return 'unknown';
+    const classes = String(status.className);
+    const text = normalizeText(status.innerText);
+    if (classes.includes('incorrect') || /неверн|неправильн|ошибк/.test(text)) return 'wrong';
+    if (/частично/.test(text)) return 'partial';
+    if (classes.includes('correct') || /верн|правильн|зачт/.test(text)) return 'correct';
+    return 'unknown';
+}
+
+// Общий текст задания: начало текста самой страницы, обрезанное перед
+// первым вариантом ответа. Именно начало, а не «всё, кроме вариантов»:
+// подпись обязана остаться куском текста страницы, иначе поиск ответа её
+// не найдёт. Варианты платформа перемешивает при каждой отрисовке, поэтому
+// в подпись они попадать не должны.
+function stemText(body) {
+    const text = normalizeText(body.innerText);
+    let cut = text.length;
+    body.querySelectorAll('label, select, .matching_table').forEach(element => {
+        const option = normalizeText(element.innerText);
+        const at = option ? text.indexOf(option) : -1;
+        if (at > 0 && at < cut) cut = at;
+    });
+    return text.slice(0, cut).trim();
+}
+
+// Что стоит в контролах сейчас. У списков и полей ввода — по значению на
+// контрол, у флажков значений может быть несколько.
+function groupValues(body, group) {
+    if (group.kind === 'select') {
+        return group.elements
+            .map(select => (select.selectedOptions[0] ? cleanText(select.selectedOptions[0].text) : ''))
+            .filter(Boolean);
+    }
+    if (group.kind === 'text') {
+        return group.elements.map(input => input.value.trim()).filter(Boolean);
+    }
+    return group.elements.filter(input => input.checked)
+        .map(input => cleanText(labelOf(body, input))).filter(Boolean);
+}
+
+// Записи для базы по тому, что сейчас на странице. Пустой список — задание
+// не заполнено (или заполнено так, что забирать нечего).
+function harvestRecords(block, body) {
+    const problemId = block.dataset.problemId || '';
+
+    // У кроссворда и таблицы на сопоставление ключ — id задания, поэтому
+    // запись одна на всё задание.
+    const table = matchingTable(body);
+    if (table) {
+        const harvest = harvestMatching(table);
+        if (!harvest) return [];
+        return [{ type: 'matching', question: matchingSignature(table),
+                  problem_id: problemId, answer: harvest.answer }];
+    }
+    if (isCrossword(body)) {
+        const harvest = harvestCrossword(body);
+        if (!harvest.total || harvest.filled !== harvest.total) return [];
+        return [{ question: crosswordSignature(body), problem_id: problemId, answer: harvest.words }];
+    }
+
+    // Обычное задание: на каждый вопрос своя запись — ровно так их потом и
+    // ищет planFor (по подписи контрола либо по абзацу над ним).
+    const records = [];
+    buildGroups(body).forEach(group => {
+        const values = groupValues(body, group);
+        if (!values.length) return;
+        // Подпись вопроса. У селекта и поля ввода это <label for>, а если
+        // платформа его не нарисовала — текст, стоящий прямо перед контролом
+        // (в заданиях-таблицах это название строки: «Леонид Парфенов»).
+        // Общий текст задания — только последняя запасная догадка: на нём все
+        // строки таблицы получают ОДИН И ТОТ ЖЕ вопрос и перестают отличаться
+        // друг от друга, а искать их потом надо по своему тексту строки.
+        const label = (group.kind === 'select' || group.kind === 'text')
+            ? (labelOf(body, group.elements[0]) || stemBefore(body, group.elements[0]))
+            : stemBefore(body, group.elements[0]);
+        const question = cleanText(label) || stemText(body);
+        if (!question) return;
+        const answer = values.length === 1 ? values[0] : values;
+        // id задания добавляем, когда он есть: слияние по нему различает
+        // записи надёжнее, чем по тексту вопроса, да и видно, откуда запись.
+        records.push(problemId
+            ? { question, problem_id: problemId, answer }
+            : { question, answer });
+    });
+    return records;
+}
+
+// Задание заполнено целиком: в каждой группе контролов есть значение.
+// Нужно, чтобы 📋 не появлялся у наполовину заполненного задания.
+function isFilled(body) {
+    const groups = buildGroups(body);
+    if (!groups.length) return false;
+    return groups.every(group => groupValues(body, group).length > 0);
+}
+
+// ── копилка снятых ответов ─────────────────────────────────────────────────
+// Снятые со страницы решения копятся в хранилище расширения, а не уходят в
+// буфер обмена: из буфера их пришлось бы вставлять в базу руками, а набор
+// разом выгружается из окна расширения (клик по его значку на панели) и
+// сливается с базой скриптом.
+const HARVEST_KEY = 'harvested';
+
+// Ключ записи набора — ТОЛЬКО текст вопроса, тем же правилом, что и ключ
+// записи базы (qa_norm.record_key в питоновских скриптах). Раньше в ключ
+// входил ещё и ответ, и это был источник дубликатов: тот же вопрос,
+// пришедший с другим ответом, считался новой записью — и в наборе, и потом
+// в базе оказывались две записи об одном вопросе.
+// id задания в ключ НЕ входит: в базе полно записей из docx, где id нет, и то
+// же задание, снятое со страницы, обязано считаться тем же самым.
+function harvestKey(record) {
+    return keyText(String(record.question || ''));
+}
+
+// Ответ одной строкой для сравнения: порядок ключей не важен, регистр и
+// раскладка внутри ответа — тоже. Это зеркало qa_norm.answer_json.
+function answerKey(answer) {
+    if (Array.isArray(answer)) {
+        return JSON.stringify(answer.map(keyText));
+    }
+    if (answer && typeof answer === 'object') {
+        return JSON.stringify(Object.keys(answer).sort().map(key => [key,
+            Array.isArray(answer[key]) ? answer[key].map(keyText) : keyText(answer[key])]));
+    }
+    return keyText(answer === undefined || answer === null ? '' : answer);
+}
+
+function answersEqual(a, b) {
+    return answerKey(a) === answerKey(b);
+}
+
+// null — хранилище недоступно; пустой список — набор пока пуст.
+async function readHarvested() {
+    try {
+        const stored = await chrome.storage.local.get(HARVEST_KEY);
+        const list = stored ? stored[HARVEST_KEY] : null;
+        return Array.isArray(list) ? list : [];
+    } catch (error) {
+        console.error('❌ Набор недоступен:', error);
+        return null;
+    }
+}
+
+// Кладёт записи в набор. Вопрос, который в наборе уже есть, второй раз не
+// добавляется; если ответ у него ДРУГОЙ — запись заменяется, побеждает
+// свежая. Это то же правило, по которому работает слияние с базой: набор и
+// база не должны расходиться в том, какая запись считается верной.
+// Возвращает {added, updated, total} либо null при отказе хранилища.
+async function saveHarvested(records) {
+    const current = await readHarvested();
+    if (!current) return null;
+    const kept = current.slice();
+    const at = new Map();
+    kept.forEach((record, index) => {
+        const key = harvestKey(record);
+        // Указываем на ПОСЛЕДНЮЮ запись с таким вопросом: если в наборе уже
+        // завёлся дубликат от прежнего правила, обновлять надо свежий.
+        if (key) at.set(key, index);
+    });
+    const added = [];
+    const updated = [];
+    records.forEach(record => {
+        const key = harvestKey(record);
+        if (!key) return;
+        // _at и _source — служебные: в базе они не нужны (скрипт слияния их
+        // вырезает), а в окне расширения по ним видно, когда и откуда запись.
+        const stamped = Object.assign({}, record,
+            { _at: new Date().toISOString(), _source: location.href });
+        const index = at.get(key);
+        if (index === undefined) {
+            at.set(key, kept.length);
+            kept.push(stamped);
+            added.push(stamped);
+        } else if (!answersEqual(kept[index].answer, record.answer)) {
+            updated.push(kept[index]);
+            kept[index] = stamped;
+        }
+    });
+    if (added.length || updated.length) {
+        try {
+            await chrome.storage.local.set({ [HARVEST_KEY]: kept });
+        } catch (error) {
+            console.error('❌ Не удалось сохранить набор:', error);
+            return null;
+        }
+    }
+    return { added: added.length, updated: updated.length, total: kept.length };
 }
 
 // ── план заполнения ────────────────────────────────────────────────────────
@@ -425,47 +919,84 @@ function planFor(block, answersData) {
     // ячейкам, общей логикой его не разложить.
     if (isMatching(body)) return matchingPlan(block, body, answersData);
 
-    const blockText = normalizeText(body.innerText);
-    let blockMatch = matchQuestion(blockText, answersData);
+    const index = baseIndex(answersData);
+    const problemId = block.dataset.problemId || '';
+    // «Свои» записи — те, что привязаны к этому заданию по id.
+    const own = (problemId && index.byId.get(problemId)) || [];
+    const groups = buildGroups(body);
+    const forms = textForms(body.innerText);
+
+    let match;
+    if (own.length === 1 && groups.length <= 1) {
+        // Единственная своя запись и один вопрос в задании: берём её, не
+        // глядя на текст. Это единственный способ вытянуть задание,
+        // состоящее ЦЕЛИКОМ из формул, — текстом оно не находится ни точно,
+        // ни похоже. id от отрисовки не зависит, так что ошибиться негде.
+        match = { data: own[0], quality: 'byId', near: [] };
+    } else {
+        // Свои записи ищутся первыми: id надёжнее текста. Если их нет —
+        // сразу вся база: в ней полно записей из docx без id, и они
+        // относятся к тем же заданиям.
+        match = findRecord(forms, own.length ? own : answersData, body, index);
+        if (!match.data && own.length) {
+            match = findRecord(forms, answersData, body, index);
+        }
+    }
+
     let weak = false;
+    let near = match.near || [];
 
     // Если в самом задании ничего не нашлось, пробуем вместе с тем, что
     // написано выше: вопрос может быть один на несколько заданий, а
     // различает их только публикация перед каждым. Такое совпадение слабее
     // обычного, поэтому о нём сообщаем в подсказке к значку.
-    if (!blockMatch.data) {
+    //
+    // Здесь только точное сравнение: на тексте в несколько тысяч знаков
+    // примерное даёт слишком много поводов найтись чужому вопросу.
+    if (!match.data) {
         const context = precedingText(block, 3000);
         if (context) {
-            blockMatch = matchQuestion(`${context} ${blockText}`, answersData);
-            weak = !!blockMatch.data;
+            const contextual = bestByQuestion(
+                textForms(`${context} ${body.innerText}`), answersData, index);
+            if (contextual.data) {
+                match = { data: contextual.data, quality: 'exact', near: [] };
+                weak = true;
+            }
         }
     }
 
-    const groups = buildGroups(body);
+    const quality = match.quality ? [match.quality] : [];
+    const approx = quality.includes('approx');
+    // Похожесть оставляем в плане: в подсказке к 🟠 «совпадение 0.91» и «0.99» —
+    // разные вещи, а по одному значку разницы не видно, и человек не знает,
+    // проверять ему каждое слово или можно поверить.
+    const sim = approx && typeof match.sim === 'number' ? match.sim : null;
+    const empty = (mode, total) => ({ mode, steps: [], matched: 0, total,
+                                      approx: false, quality: [], near, sim: null });
 
     // 1. Ответ-список ровно по числу контролов — это задание на соответствие
     //    или таблица с полями: значения раскладываются по порядку, как раньше.
     const positional = positionalTarget(body);
-    const answer = blockMatch.data ? blockMatch.data.answer : null;
+    const answer = match.data ? match.data.answer : null;
     if (Array.isArray(answer) && positional
         && answer.length === positional.elements.length) {
         return {
             mode: 'positional',
             steps: [{ kind: positional.kind, elements: positional.elements, answer }],
-            matched: 1, total: 1, weak
+            matched: 1, total: 1, weak, approx, quality, near, sim
         };
     }
 
     // 2. В блоке один вопрос — ищем ответ по всему блоку, как раньше.
     if (groups.length <= 1) {
-        if (!blockMatch.data) return { mode: 'single', steps: [], matched: 0, total: 1 };
+        if (!match.data) return empty('single', 1);
         const group = groups[0] || { kind: positional ? positional.kind : null,
                                      elements: positional ? positional.elements : [] };
-        if (!group.kind) return { mode: 'single', steps: [], matched: 0, total: 1 };
+        if (!group.kind) return empty('single', 1);
         return {
             mode: 'single',
-            steps: [{ kind: group.kind, elements: group.elements, answer: blockMatch.data.answer }],
-            matched: 1, total: 1, weak
+            steps: [{ kind: group.kind, elements: group.elements, answer: match.data.answer }],
+            matched: 1, total: 1, weak, approx, quality, near, sim
         };
     }
 
@@ -473,18 +1004,32 @@ function planFor(block, answersData) {
     //    списков с подписями). Одному ответу тут взяться неоткуда — ищем
     //    свой ответ для каждого вопроса отдельно.
     const steps = [];
+    const qualities = [];
+    // Из примерных совпадений в подсказку идёт самое слабое: именно оно решает,
+    // стоит ли верить остальным.
+    let groupSim = null;
     groups.forEach(group => {
-        const found = matchGroup(body, group, answersData);
+        const found = matchGroup(body, group, answersData, own, index);
         if (found.data) {
             steps.push({ kind: group.kind, elements: group.elements, answer: found.data.answer });
+            if (found.quality) qualities.push(found.quality);
+            if (found.quality === 'approx' && typeof found.sim === 'number'
+                && (groupSim === null || found.sim < groupSim)) {
+                groupSim = found.sim;
+            }
         }
     });
     // weak тут ни при чём: в этом режиме каждый вопрос ищется по своей
     // подписи, а не по всему блоку.
-    return { mode: 'groups', steps, matched: steps.length, total: groups.length };
+    return { mode: 'groups', steps, matched: steps.length, total: groups.length,
+             approx: qualities.includes('approx'), quality: qualities, near,
+             sim: groupSim };
 }
 
-function matchGroup(body, group, answersData) {
+// Один вопрос блока. Подпись контрола (у селекта — <label for>, у радио —
+// абзац над вариантами) и есть текст вопроса; ищем его среди «своих» записей,
+// и лишь потом по всей базе.
+function matchGroup(body, group, answersData, own, index) {
     const candidates = [];
     // У селектов и полей ввода подпись — это текст самого вопроса.
     if (group.kind === 'select' || group.kind === 'text') {
@@ -495,12 +1040,44 @@ function matchGroup(body, group, answersData) {
     const stem = stemBefore(body, group.elements[0]);
     if (stem) candidates.push(stem);
 
-    let best = { score: 0, data: null };
+    const scopes = own.length ? [own, answersData] : [answersData];
+    let best = { data: null, quality: null, near: [] };
+    let bestRank = -1;
+    let bestScore = 0;
+    let near = [];
+
     candidates.forEach(candidate => {
-        const found = matchQuestion(normalizeText(candidate), answersData);
-        if (found.score > best.score) best = found;
+        const forms = textForms(candidate);
+        scopes.forEach((scope, position) => {
+            const hit = bestByQuestion(forms, scope, index);
+            if (!hit.data) return;
+            const rank = position === 0 ? 2 : 1;
+            if (rank > bestRank || (rank === bestRank && hit.score > bestScore)) {
+                bestRank = rank;
+                bestScore = hit.score;
+                best = {
+                    data: hit.data,
+                    quality: position === 0 ? 'byId' : 'exact',
+                    near: []
+                };
+            }
+        });
+        if (bestRank > 0) return;
+        // Точного совпадения не нашлось ни в одном из кругов — пробуем
+        // примерное. Только по всей базе: «свои» записи для этого задания
+        // уже просмотрены выше.
+        const approx = bestApproximate(forms, answersData, body, index);
+        if (approx.data) {
+            if (bestRank < 0 || approx.sim > bestScore) {
+                bestRank = 0;
+                bestScore = approx.sim;
+                best = { data: approx.data, quality: 'approx', sim: approx.sim, near: [] };
+            }
+        } else if (approx.near.length) {
+            near = approx.near;
+        }
     });
-    return best;
+    return best.data ? best : { data: null, quality: null, near };
 }
 
 // ── заполнение ─────────────────────────────────────────────────────────────
@@ -515,10 +1092,11 @@ function setSelectValue(select, wanted) {
     const needle = normalizeText(wanted);
     if (!needle) return;
     const options = Array.from(select.options);
-    // Сначала точное совпадение и только потом вхождение: короткий ответ
-    // вроде «3» иначе прилипает к чужому варианту («13», «30»).
+    // Сначала точное совпадение, потом вхождение и только в конце примерное:
+    // короткий ответ вроде «3» иначе прилипает к чужому варианту («13», «30»).
     const target = options.find(o => normalizeText(o.text) === needle)
-        || options.find(o => normalizeText(o.text).includes(needle));
+        || options.find(o => normalizeText(o.text).includes(needle))
+        || closestChoice(options, needle);
     if (!target) return;
     select.value = target.value;
     select.dispatchEvent(new Event('change', { bubbles: true }));
@@ -552,6 +1130,18 @@ function setChoiceInputs(body, inputs, answer) {
     let chosen = labelled.filter(l => wanted.includes(l.text));
     if (chosen.length === 0) {
         chosen = labelled.filter(l => wanted.some(w => l.text.includes(w)));
+    }
+    if (chosen.length === 0) {
+        // Не сошлось совсем ничего — пробуем примерное совпадение, по одному
+        // варианту на каждый нужный ответ. Порог здесь выше, чем при поиске
+        // вопроса: там ошибка даёт ❌ или 🟠, а здесь — молча подставленный
+        // неверный вариант ответа.
+        const taken = new Set();
+        wanted.forEach(w => {
+            const found = closestChoice(labelled.filter(l => !taken.has(l.input)), w);
+            if (found) taken.add(found.input);
+        });
+        chosen = labelled.filter(l => taken.has(l.input));
     }
     const hit = new Set(chosen.map(l => l.input));
     inputs.forEach(input => {
@@ -608,108 +1198,201 @@ function applyPlan(block, plan) {
     plan.steps.forEach(step => applyStep(body, step));
 }
 
+// ── значки у заданий ───────────────────────────────────────────────────────
+// Платформа перерисовывает задание после каждой проверки: шапка и тело
+// заменяются новыми элементами, а наш значок остаётся висеть на оторванном
+// узле — поэтому пометки «блок уже обработан» недостаточно, значки надо
+// уметь ставить заново.
+function makeMark(text, title, margin) {
+    const mark = document.createElement('span');
+    mark.className = 'helper-mark';
+    mark.textContent = text;
+    mark.title = title;
+    mark.style.cursor = 'pointer';
+    mark.style.marginLeft = margin;
+    mark.style.fontSize = '20px';
+    return mark;
+}
+
+function harvestMark(block, answersData) {
+    const verdict = statusOf(block);
+    const about = verdict === 'correct' ? ' Платформа отметила ответ как верный.'
+        : verdict === 'wrong' ? ' ВНИМАНИЕ: платформа отметила ответ как НЕВЕРНЫЙ.'
+        : verdict === 'partial' ? ' Платформа зачла ответ частично.'
+        : ' Платформа ответ ещё не проверяла — сверьте его сами.';
+    const mark = makeMark(verdict === 'wrong' ? '📋⚠️' : '📋',
+        'Забрать решение этого задания в набор новых ответов. Набор потом '
+        + 'выгружается из окна расширения (клик по его значку на панели браузера) '
+        + 'и сливается с базой скриптом merge-answers.' + about, '6px');
+    mark.addEventListener('click', async () => {
+        // Задание могли перерисовать — берём записи заново, с текущего DOM.
+        const records = harvestRecords(block, bodyOf(block));
+        if (!records.length) return;
+        console.log('📋 Снято со страницы:\n' + JSON.stringify(records, null, 2));
+        const saved = await saveHarvested(records);
+        // Платформа ответ уже видела, поэтому держим его и в памяти
+        // страницы: задание сразу станет «найденным» и значок не откатится
+        // к ❌ при следующей перерисовке. В сам файл базы запись попадает
+        // только через выгрузку набора — у content-скрипта доступа к файлам нет.
+        //
+        // Запись с тем же вопросом ЗАМЕНЯЕТСЯ, а не дописывается: правило
+        // «побеждает последняя» одинаково в базе, в наборе и здесь.
+        records.forEach(record => {
+            const key = harvestKey(record);
+            const at = answersData.findIndex(item => harvestKey(item) === key);
+            if (at === -1) answersData.push(record);
+            else answersData[at] = record;
+        });
+        // Индекс базы построен по прежнему содержимому — пересобираем.
+        baseVersion += 1;
+        if (!saved) {
+            mark.textContent = '📋❌';
+            mark.title = 'Не удалось записать в набор расширения. Записи напечатаны '
+                + 'в консоли (F12) — их можно перенести в базу руками.';
+        } else if (!saved.added && !saved.updated) {
+            mark.textContent = '📋🔁';
+            mark.title = 'Эти записи уже есть в наборе — второй раз не добавлены. '
+                + 'Всего в наборе: ' + saved.total + '.';
+        } else if (!saved.added) {
+            mark.textContent = '📋♻️';
+            mark.title = 'Новых вопросов нет, но у ' + saved.updated
+                + ' уже известных ответ другой — в наборе они заменены свежими. '
+                + 'Всего в наборе: ' + saved.total + '.';
+        } else {
+            mark.textContent = '📋✅';
+            mark.title = 'В набор добавлено записей: ' + saved.added
+                + (saved.updated ? ', заменено: ' + saved.updated : '')
+                + '. Всего в наборе: ' + saved.total
+                + '. Выгрузить его — клик по значку расширения на панели браузера.';
+        }
+        // даём увидеть подтверждение и перерисовываем значок: ответ теперь
+        // считается найденным, значит на его месте будет ✅
+        setTimeout(() => renderMarks(block, answersData), 900);
+    });
+    return mark;
+}
+
+// Короткая подпись записи для подсказки к значку.
+function briefQuestion(question) {
+    const text = cleanText(question);
+    return text.length > 70 ? `${text.slice(0, 69)}…` : text;
+}
+
+// Значки, которые должны стоять у задания прямо сейчас.
+function buildMarks(block, body, answersData) {
+    const plan = planFor(block, answersData);
+    // План считается заново и по клику: пока задание стоит на странице,
+    // его контролы могут быть заменены, и ссылки в старом плане протухнут.
+    const apply = () => applyPlan(block, planFor(block, answersData));
+    const marks = [];
+    const conflicts = plan.conflicts || [];
+    const near = (plan.near || []).map(item => briefQuestion(item.question));
+    const nearby = near.length ? ' Похожие записи: ' + near.join(' | ') + '.' : '';
+    const simText = typeof plan.sim === 'number'
+        ? ` Похожесть ${plan.sim.toFixed(2)} — чем ближе к 1.00, тем вернее он.` : '';
+
+    if (conflicts.length) {
+        // В базе слова не сходятся на пересечении — платформа такую клетку
+        // не примет, поэтому об этом надо сказать громко.
+        const icon = makeMark('⚠️', 'Слова в базе не сходятся на пересечении: '
+            + conflicts.slice(0, 3).map(c => `клетка ${c.cell} — «${c.было}» и «${c.стало}»`).join('; ')
+            + '. Нажмите, чтобы всё равно вставить.', '10px');
+        icon.addEventListener('click', apply);
+        marks.push(icon);
+    } else if (plan.matched > 0 && plan.approx) {
+        // Совпадение примерное — отдельный значок, чтобы оно не спряталось за
+        // зелёной галочкой. Вставляется, как и всё остальное, только по клику.
+        const icon = makeMark('🟠', 'ТОЧНОГО совпадения в базе нет, но есть похожая '
+            + 'запись — ответ подставлен по ней. Проверьте глазами: похожий вопрос '
+            + 'может оказаться совсем другим заданием.' + simText + nearby
+            + ' Нажмите, чтобы вставить.', '10px');
+        icon.addEventListener('click', apply);
+        marks.push(icon);
+    } else if (plan.matched > 0 && plan.matched === plan.total) {
+        const icon = makeMark('✅', plan.weak
+            ? 'Ответ найден по тексту ВЫШЕ задания (например, по публикации перед ним) — '
+                + 'сверьте глазами. Нажмите, чтобы вставить.'
+            : 'Нажмите, чтобы вставить ответ', '10px');
+        icon.addEventListener('click', apply);
+        marks.push(icon);
+    } else if (plan.matched > 0) {
+        // В блоке несколько вопросов, и часть из них в базе не нашлась.
+        // Молча делать вид, что всё в порядке, нельзя.
+        const icon = makeMark('🟡', `В базе нашлось ${plan.matched} из ${plan.total} вопросов блока. `
+            + 'Нажмите, чтобы вставить найденные.', '10px');
+        icon.addEventListener('click', apply);
+        marks.push(icon);
+    } else {
+        marks.push(makeMark('❌', 'Ответ не найден в базе'
+            + (near.length ? ': ни одна запись не подошла достаточно точно.' : '.')
+            + nearby, '10px'));
+    }
+    return marks;
+}
+function renderMarks(block, answersData) {
+    const header = block.querySelector('h3.problem-header');
+    const body = block.querySelector('div.problem');
+    if (!header || !body) return;
+
+    const fresh = buildMarks(block, body, answersData);
+    const current = Array.from(header.querySelectorAll('span.helper-mark'));
+    // Перерисовываем только когда набор значков изменился: страница шумит
+    // мутациями постоянно, а наши же вставки — тоже мутации, и без этой
+    // проверки мы гоняли бы себя по кругу.
+    const same = current.length === fresh.length && current.every((mark, index) =>
+        mark.textContent === fresh[index].textContent && mark.title === fresh[index].title);
+    if (same) return;
+
+    current.forEach(mark => mark.remove());
+    fresh.forEach(mark => header.appendChild(mark));
+}
+
 // ── основной проход ────────────────────────────────────────────────────────
-async function processQuestions() {
+// База читается один раз и дальше живёт в памяти страницы: снятые со
+// страницы решения добавляются прямо в неё.
+let answersCache = null;
+
+async function loadAnswers() {
+    if (answersCache) return answersCache;
     try {
         const response = await fetch(chrome.runtime.getURL('answers.json'));
-        if (!response.ok) { console.error("❌ Ошибка: не удалось загрузить файл answers.json."); return; }
-        const answersData = await response.json();
-        const problemBlocks = document.querySelectorAll('div.problems-wrapper');
+        if (!response.ok) {
+            console.error('❌ Не удалось загрузить answers.json:', response.status);
+            return null;
+        }
+        answersCache = await response.json();
+    } catch (error) {
+        console.error('❌ Не удалось загрузить answers.json:', error);
+        return null;
+    }
+    return answersCache;
+}
 
-        if (problemBlocks.length === 0) return;
-
-        problemBlocks.forEach((block) => {
-            if (block.dataset.helperProcessed) return;
-            block.dataset.helperProcessed = 'true';
-            const questionHeader = block.querySelector('h3.problem-header');
-            const questionBody = block.querySelector('div.problem');
-            if (!questionHeader || !questionBody) return;
-
-            const plan = planFor(block, answersData);
-
-            const icon = document.createElement('span');
-            icon.style.cursor = 'pointer';
-            icon.style.marginLeft = '10px';
-            icon.style.fontSize = '20px';
-            const conflicts = plan.conflicts || [];
-            if (conflicts.length) {
-                // В базе слова не сходятся на пересечении — платформа такую
-                // клетку не примет, поэтому об этом надо сказать громко.
-                icon.textContent = '⚠️';
-                icon.title = 'Слова в базе не сходятся на пересечении: '
-                    + conflicts.slice(0, 3).map(c => `клетка ${c.cell} — «${c.было}» и «${c.стало}»`)
-                        .join('; ')
-                    + '. Нажмите, чтобы всё равно вставить.';
-                icon.addEventListener('click', () => applyPlan(block, plan));
-            } else if (plan.matched > 0 && plan.matched === plan.total) {
-                icon.textContent = '✅';
-                icon.title = plan.weak
-                    ? 'Ответ найден по тексту ВЫШЕ задания (например, по публикации перед ним) — '
-                        + 'сверьте глазами. Нажмите, чтобы вставить.'
-                    : 'Нажмите, чтобы вставить ответ';
-                icon.addEventListener('click', () => applyPlan(block, plan));
-            } else if (plan.matched > 0) {
-                // В блоке несколько вопросов, и часть из них в базе не нашлась.
-                // Молча делать вид, что всё в порядке, нельзя.
-                icon.textContent = '🟡';
-                icon.title = `В базе нашлось ${plan.matched} из ${plan.total} вопросов блока. `
-                    + 'Нажмите, чтобы вставить найденные.';
-                icon.addEventListener('click', () => applyPlan(block, plan));
-            } else {
-                icon.textContent = '❌';
-                icon.title = 'Ответ не найден в базе';
-            }
-            questionHeader.appendChild(icon);
-
-            // Задание, которого нет в базе, но которое уже решено на
-            // странице: решение можно забрать готовым, не разбирая его
-            // заново вручную.
-            let record = null;
-            if (plan.mode === 'crossword') {
-                const harvest = harvestCrossword(questionBody);
-                if (harvest.filled === harvest.total && harvest.total > 0) {
-                    record = {
-                        question: crosswordSignature(questionBody),
-                        problem_id: block.dataset.problemId || '',
-                        answer: harvest.words
-                    };
-                }
-            } else if (plan.mode === 'matching') {
-                const harvest = harvestMatching(matchingTable(questionBody));
-                if (harvest) {
-                    record = {
-                        type: 'matching',
-                        question: matchingSignature(matchingTable(questionBody)),
-                        problem_id: block.dataset.problemId || '',
-                        answer: harvest.answer
-                    };
-                }
-            }
-            if (record && plan.matched < plan.total) {
-                const copy = document.createElement('span');
-                copy.textContent = '📋';
-                copy.style.cursor = 'pointer';
-                copy.style.marginLeft = '6px';
-                copy.style.fontSize = '20px';
-                copy.title = 'Скопировать решение этого задания со страницы в формате базы '
-                    + '(вставить в answers.json)';
-                copy.addEventListener('click', () => {
-                    const text = JSON.stringify([record], null, 2);
-                    console.log('📋 Запись для answers.json:\n' + text);
-                    if (navigator.clipboard) navigator.clipboard.writeText(text);
-                    copy.textContent = '📋✅';
-                });
-                questionHeader.appendChild(copy);
-            }
-        });
+async function processQuestions() {
+    try {
+        const answersData = await loadAnswers();
+        if (!answersData) return;
+        document.querySelectorAll('div.problems-wrapper')
+            .forEach(block => renderMarks(block, answersData));
     } catch (error) {
         console.error("❌ Критическая ошибка в processQuestions:", error);
     }
 }
 
-const callback = function(mutationsList, observer) {
-    if (document.querySelector('div.problems-wrapper')) {
+// Перерисовок на странице много (в том числе наших собственных), поэтому
+// отклик на мутации придерживаем: важен итог, а не каждый шаг.
+let renderTimer = null;
+function scheduleRender() {
+    if (renderTimer) return;
+    renderTimer = setTimeout(() => {
+        renderTimer = null;
         processQuestions();
+    }, 250);
+}
+
+const callback = function() {
+    if (document.querySelector('div.problems-wrapper')) {
+        scheduleRender();
     }
 };
 const observer = new MutationObserver(callback);

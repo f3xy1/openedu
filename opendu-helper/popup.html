@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>OpenEdu Helper</title>
+<link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <h1>OpenEdu Helper</h1>
+  <p class="summary" id="summary">Читаю набор…</p>
+
+  <div class="list" id="list"></div>
+
+  <div class="buttons">
+    <button id="export" class="primary">Экспорт…</button>
+    <button id="copy">Скопировать JSON</button>
+    <button id="clear" class="danger">Очистить набор</button>
+  </div>
+
+  <p class="status" id="status"></p>
+  <p class="hint">
+    Выгруженный файл сливается с базой двойным кликом по
+    <code>merge-answers.cmd</code> в папке проекта.
+  </p>
+
+  <script src="normalize.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

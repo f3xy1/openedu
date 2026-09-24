@@ -1,14 +1,18 @@
 {
   "manifest_version": 3,
   "name": "OpenEdu Helper",
-  "version": "1.5",
+  "version": "1.6",
   "description": "Помощник для прохождения тестов на openedu.ru",
-  "permissions": [],
+  "permissions": ["storage", "downloads"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "OpenEdu Helper — набор снятых ответов"
+  },
   "content_scripts": [
     {
       "matches": ["*://*.openedu.ru/*"],
-      "js": ["content.js"],
-      "all_frames": true 
+      "js": ["normalize.js", "content.js"],
+      "all_frames": true
     }
   ],
   "web_accessible_resources": [

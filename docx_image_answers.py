@@ -56,6 +56,9 @@ from docx.oxml.ns import qn
 from docx.table import Table
 from docx.text.paragraph import Paragraph
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import qa_norm                       # noqa: E402  (общие правила сравнения)
+
 # --- цвета, которые использует платформа openedu -----------------------------
 GREEN_BOXES = [(73, 128, 30), (0, 128, 0)]   # правильный ответ
 RED_MARKS = [(152, 8, 20)]                   # неправильный ответ
@@ -140,7 +143,7 @@ def disambiguate(recs, docx_path):
     """
     byq = defaultdict(list)
     for r in recs:
-        byq[norm(r['question'])].append(r)
+        byq[key_of(r['question'])].append(r)
     ambiguous = {q: rs for q, rs in byq.items()
                  if len({norm(answer_text(r['answer'])) for r in rs}) > 1}
     if not ambiguous:
@@ -313,7 +316,23 @@ def clean_text(t):
 
 
 def norm(t):
-    return re.sub(r'[\s ]+', ' ', t).strip().lower()
+    """Правило сравнения — общее для всего проекта (qa_norm).
+
+    Раньше здесь была своя копия (пробелы + нижний регистр). Из-за того,
+    что копия не знала ни про кавычки, ни про формулы, один и тот же вопрос
+    в двух написаниях давал два разных ключа — и в базе заводились дубликаты.
+    """
+    return qa_norm.norm(t)
+
+
+def key_of(question):
+    """Ключ вопроса — им же ключуются записи базы (qa_norm.record_key).
+
+    Отдельная обёртка нужна, чтобы вопрос и запись сравнивались ровно одним
+    правилом: расхождение здесь и есть та причина, по которой дубликат,
+    пришедший из docx, не опознавался как уже известный.
+    """
+    return qa_norm.key(question)
 
 
 def answer_text(a):
@@ -527,32 +546,33 @@ def cmd_build(args):
         for tok, joined, plain, _hyp in cands[:40]:
             print(f"    {tok!r}: {joined!r},   # без дефиса встречается {plain}x")
 
-    # дедуп + проверка конфликтов
-    byq = defaultdict(set)
-    for r in recs:
-        byq[norm(r['question'])].add(norm(answer_text(r['answer'])))
-    conflicts = {q: a for q, a in byq.items() if len(a) > 1}
-    if conflicts:
-        print(f'! Вопросов с разными ответами: {len(conflicts)}')
-        for q, a in list(conflicts.items())[:5]:
-            print(f'    {q[:70]!r} -> {sorted(a)}')
-
-    seen, out = set(), []
-    for r in recs:
-        k = norm(r['question'])
-        ans = r['answer']
-        if isinstance(ans, list):
-            ans = [a for a in ans if a]
-            if not ans:
-                continue
-        elif not ans:
-            continue
-        if k in seen:
-            continue
-        seen.add(k)
-        out.append({'question': r['question'], 'answer': ans})
+    # Дедупликация внутри разбора — общим правилом проекта
+    # (qa_norm.dedupe_records): побеждает ПОСЛЕДНЯЯ запись. Раньше здесь
+    # побеждала первая, то есть в базу уезжала самая ранняя версия ответа, а
+    # при слиянии — самая поздняя. Одно и то же правило должно быть в разборе,
+    # в слиянии и в dedupe-answers.py, иначе дубликаты возвращаются.
+    kept, replaced = qa_norm.dedupe_records(recs)
+    # 'src' (номер картинки) нужен был только для привязки подвопросов к
+    # описанию ситуации и в базу не идёт.
+    out = [{'question': r['question'], 'answer': r['answer']} for r in kept]
 
     print(f'Записей: {len(recs)} -> уникальных: {len(out)}')
+    if replaced:
+        # Один вопрос с РАЗНЫМИ ответами — не рутина, а сигнал о проблеме с
+        # данными, поэтому такие случаи показываем отдельно и полностью.
+        clashes = [(old, new) for old, new in replaced
+                   if not qa_norm.answer_equal(old['answer'], new['answer'])]
+        print(f'Повторов вопроса при разборе: {len(replaced)} — оставлена '
+              f'последняя запись.')
+        if clashes:
+            print(f'  из них с ДРУГИМ ответом: {len(clashes)} — проверьте '
+                  f'глазами:')
+            for old, new in clashes[:10]:
+                print(f'    {qa_norm.full(old["question"])}')
+                print(f'        было:  {qa_norm.answer_brief(old["answer"])}')
+                print(f'        стало: {qa_norm.answer_brief(new["answer"])}')
+            if len(clashes) > 10:
+                print(f'    … и ещё {len(clashes) - 10}')
     if skipped:
         print(f'Не расшифровано (пропущено): {len(skipped)}')
         for i, k, q in skipped[:10]:
@@ -564,13 +584,17 @@ def cmd_build(args):
         # конец: answers.json растёт как набор баз под разные тесты, и повторный
         # разбор того же docx не должен перемешивать уже собранное.
         old = json.load(open(args.merge, encoding='utf-8'))
-        old_by_q = {norm(x.get('question', '')): x for x in old}
-        fresh = [x for x in out if norm(x['question']) not in old_by_q]
+        old_by_q = {key_of(x.get('question', '')): x for x in old}
+        if len(old_by_q) != len(old):
+            print(f'[!] В {args.merge} есть записи с повторяющимися вопросами '
+                  f'({len(old)} записей, {len(old_by_q)} вопросов) — '
+                  f'прогоните dedupe-answers.py.')
+        fresh = [x for x in out if key_of(x['question']) not in old_by_q]
         if args.refresh:
             # --refresh: ответы из текущего docx перекрывают старые
-            new_by_q = {norm(x['question']): x for x in out}
-            updated = sum(1 for x in old if norm(x.get('question', '')) in new_by_q)
-            merged = [new_by_q.get(norm(x.get('question', '')), x) for x in old] + fresh
+            new_by_q = {key_of(x['question']): x for x in out}
+            updated = sum(1 for x in old if key_of(x.get('question', '')) in new_by_q)
+            merged = [new_by_q.get(key_of(x.get('question', '')), x) for x in old] + fresh
             print(f'Слияние с {args.merge}: обновлено {updated}, '
                   f'добавлено {len(fresh)} (итого {len(merged)})')
         else:

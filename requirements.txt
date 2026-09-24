@@ -1,0 +1,14 @@
+# Зависимости скриптов проекта.
+#
+#   python -m pip install -r requirements.txt
+#
+# Часть библиотек нужна только конкретным скриптам — они помечены ниже.
+
+# ── Разбор документов Word (.docx) с ответами ──────────────────────────────
+python-docx>=1.1.0        # answer-parser.py, converter.py, docx_image_answers.py
+Pillow>=10.0.0            # docx_image_answers.py: скриншоты, обрезка, contact sheet
+numpy>=1.26.0             # docx_image_answers.py: поиск зелёных/красных рамок по пикселям
+pdfplumber>=0.11.0        # converter.py: только для PDF, для .docx не нужен
+
+# ── Управление браузером (проверка заполнения на живой странице) ───────────
+websocket-client>=1.7.0   # cdp.py: подключение к вкладке по Chrome DevTools Protocol

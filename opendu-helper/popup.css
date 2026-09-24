@@ -1,0 +1,155 @@
+/* Окно расширения: узкое, но список снятых ответов бывает длинным,
+   поэтому прокручивается только он, а кнопки всегда на виду. */
+body {
+    width: 380px;
+    margin: 0;
+    padding: 10px 12px 12px;
+    font: 13px/1.4 "Segoe UI", system-ui, sans-serif;
+    color: #1a1a1a;
+}
+
+h1 {
+    margin: 0 0 2px;
+    font-size: 14px;
+}
+
+.summary {
+    margin: 0 0 8px;
+    color: #555;
+}
+
+.list {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid #dcdcdc;
+    border-radius: 6px;
+}
+
+.list:empty {
+    display: none;
+}
+
+.item {
+    padding: 6px 8px;
+    border-bottom: 1px solid #eee;
+}
+
+.item:last-child {
+    border-bottom: none;
+}
+
+.item .head {
+    display: flex;
+    gap: 6px;
+    align-items: baseline;
+}
+
+.item .num {
+    color: #999;
+    min-width: 18px;
+    text-align: right;
+}
+
+.item .type {
+    flex: none;
+    padding: 0 5px;
+    border-radius: 8px;
+    background: #eef2f7;
+    color: #456;
+    font-size: 11px;
+}
+
+.item .question {
+    flex: 1;
+    overflow-wrap: anywhere;
+}
+
+.item .answer {
+    margin: 2px 0 0 24px;
+    color: #2a6b3f;
+    overflow-wrap: anywhere;
+}
+
+/* Тот же вопрос записан дважды. При слиянии останется последняя запись, так
+   что важно сразу видеть, какая именно, — и какой ответ при этом потеряется. */
+.item.dupe .answer {
+    color: #777;
+}
+
+.item .dup {
+    margin: 2px 0 0 24px;
+    font-size: 11px;
+}
+
+.item .dup.keep {
+    color: #2a6b3f;
+}
+
+.item .dup.drop {
+    color: #a33;
+}
+
+.empty {
+    padding: 10px;
+    color: #666;
+}
+
+.buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+}
+
+button {
+    flex: 1 1 auto;
+    padding: 6px 8px;
+    border: 1px solid #c8c8c8;
+    border-radius: 6px;
+    background: #f7f7f7;
+    font: inherit;
+    cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+    background: #efefef;
+}
+
+button:disabled {
+    opacity: .5;
+    cursor: default;
+}
+
+button.primary {
+    border-color: #2f6fb5;
+    background: #3b7fd0;
+    color: #fff;
+}
+
+button.primary:hover:not(:disabled) {
+    background: #346fb8;
+}
+
+button.danger {
+    color: #a33;
+}
+
+.status {
+    margin: 8px 0 0;
+    min-height: 1.2em;
+    color: #555;
+}
+
+.status.bad {
+    color: #a33;
+}
+
+.hint {
+    margin: 8px 0 0;
+    color: #888;
+    font-size: 11px;
+}
+
+code {
+    font-size: 11px;
+}
