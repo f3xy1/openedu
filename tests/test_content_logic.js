@@ -13,7 +13,7 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 
-const ROOT = path.join(__dirname, '..', 'opendu-helper');
+const ROOT = path.join(__dirname, '..', 'openedu-helper');
 
 const sandbox = {
     console,
@@ -22,6 +22,7 @@ const sandbox = {
     clearTimeout,
     fetch: async () => ({ ok: false }),
     MutationObserver: class { observe() {} },
+    Date,
     document: {
         body: {},
         querySelector: () => null,
@@ -31,13 +32,20 @@ const sandbox = {
     chrome: {
         runtime: { getURL: name => name },
         storage: { local: { get: async () => ({}), set: async () => {} } }
-    }
+    },
+    // nav.js на верхнем уровне подписывается на сообщения и рассылает их
+    // фреймам. Настоящей страницы в песочнице нет, поэтому и то и другое —
+    // пустышки: файл просто ничего не запускает, а чистые его функции
+    // (navIcon, submitAllowed) проверяются ниже как обычно.
+    addEventListener() {},
+    postMessage() {}
 };
 sandbox.window = sandbox;
 vm.createContext(sandbox);
 
 const source = fs.readFileSync(path.join(ROOT, 'normalize.js'), 'utf8')
-    + '\n' + fs.readFileSync(path.join(ROOT, 'content.js'), 'utf8');
+    + '\n' + fs.readFileSync(path.join(ROOT, 'content.js'), 'utf8')
+    + '\n' + fs.readFileSync(path.join(ROOT, 'nav.js'), 'utf8');
 vm.runInContext(source, sandbox, { filename: 'content.js' });
 
 const api = vm.runInContext(`({
@@ -45,7 +53,7 @@ const api = vm.runInContext(`({
     recordType, makeEntry, baseIndex, questionScore, bestByQuestion,
     bestApproximate, findRecord, substringDistance, similarityOf,
     harvestKey, answerKey, answersEqual, closestChoice, answerFitsBlock,
-    questionParts
+    questionParts, submitAllowed, navIcon, statusOf
 })`, sandbox);
 
 let failed = 0;
@@ -202,6 +210,57 @@ function equal(name, actual, expected) {
         'Второй вариант');
     equal('далёкий вариант не подставляется',
         api.closestChoice(options, api.normalizeText('совсем другое')), null);
+}
+
+// ── разрешение на отправку ─────────────────────────────────────────────────
+// «Отправить» — единственное, что расширение делает необратимо: платформа
+// запоминает оценку. Поэтому кнопка в шапке юнита жмёт её только по полному и
+// не вызывающему сомнений совпадению, и вот эти правила:
+{
+    check('полный ответ — отправлять можно',
+        api.submitAllowed({ matched: 3, total: 3 }) === true);
+    check('неполный ответ — нельзя',
+        api.submitAllowed({ matched: 2, total: 3 }) === false);
+    check('ничего не найдено — нельзя',
+        api.submitAllowed({ matched: 0, total: 3 }) === false);
+    check('примерное совпадение — нельзя',
+        api.submitAllowed({ matched: 3, total: 3, approx: true }) === false);
+    check('слова кроссворда не сходятся — нельзя',
+        api.submitAllowed({ matched: 2, total: 2, conflicts: [{ cell: '3-4' }] }) === false);
+    check('без плана отправлять нечего',
+        api.submitAllowed(null) === false);
+}
+
+// ── значок состояния базы в шапке юнита ────────────────────────────────────
+{
+    const full = { matched: 2, total: 2 };
+    equal('все задания найдены — ✅', api.navIcon([full, { matched: 1, total: 1 }]), '✅');
+    equal('ни одного — ❌', api.navIcon([{ matched: 0, total: 2 }, { matched: 0, total: 1 }]), '❌');
+    equal('часть нашлась — 🟡', api.navIcon([full, { matched: 0, total: 1 }]), '🟡');
+    // Неполный ответ — это тоже «не всё в порядке», хотя вопрос и нашёлся.
+    equal('ответ неполный — 🟡', api.navIcon([full, { matched: 1, total: 2 }]), '🟡');
+    equal('примерное совпадение — 🟡', api.navIcon([{ matched: 1, total: 1, approx: true }]), '🟡');
+    equal('заданий нет — значка нет', api.navIcon([]), '');
+}
+
+// ── вердикт платформы ──────────────────────────────────────────────────────
+// От этих строк зависит, что попадёт в набор: кнопка «забрать решения» в шапке
+// юнита пропускает задания, оценённые как «неверно» и «частично». Поэтому
+// проверяем не только разбор, но и то, что «неверно» не читается как «верно».
+{
+    const withStatus = (className, text) => ({
+        querySelector: () => ({ className: className, innerText: text })
+    });
+    equal('верно', api.statusOf(withStatus('status', 'Верно')), 'correct');
+    equal('неверно — это не «верно»', api.statusOf(withStatus('status', 'Неверно')), 'wrong');
+    equal('класс платформы тоже читается',
+        api.statusOf(withStatus('status incorrect', '')), 'wrong');
+    equal('частично верный ответ',
+        api.statusOf(withStatus('status', 'Частично верно')), 'partial');
+    equal('платформа ещё не проверяла',
+        api.statusOf(withStatus('status', '')), 'unknown');
+    equal('статуса на странице нет',
+        api.statusOf({ querySelector: () => null }), 'unknown');
 }
 
 console.log(failed

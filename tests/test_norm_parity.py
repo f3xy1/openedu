@@ -7,7 +7,7 @@
 давал два разных ключа. Поэтому вместо «следить глазами» — тест.
 
     python tests/test_norm_parity.py
-    python tests/test_norm_parity.py --base opendu-helper/answers.json
+    python tests/test_norm_parity.py --base openedu-helper/answers.json
 
 Возвращает 1, если нашлись расхождения.
 """

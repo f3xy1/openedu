@@ -4,7 +4,7 @@
 Зачем: на странице курса значок 📋 у решённого задания складывает запись в
 набор внутри расширения. В окне расширения (клик по его значку на панели
 браузера) набор выгружается файлом answers-new.json. Этот скрипт дописывает
-такие записи в opendu-helper/answers.json.
+такие записи в openedu-helper/answers.json.
 
     python merge-answers.py                  найти свежий answers-new*.json
     python merge-answers.py файл.json        взять конкретный файл

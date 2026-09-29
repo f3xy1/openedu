@@ -14,28 +14,40 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 
-const ROOT = path.join(__dirname, '..', 'opendu-helper');
+const ROOT = path.join(__dirname, '..', 'openedu-helper');
 const read = name => fs.readFileSync(path.join(ROOT, name), 'utf8');
 
 // ── заглушка DOM ───────────────────────────────────────────────────────────
 // Ровно то, что трогает popup.js: createElement/append/appendChild, текст,
 // классы и обработчики. Всё остальное намеренно отсутствует.
+//
+// Обработчики запоминаются (handlers), а textContent в значении '' чистит
+// детей — как в настоящем DOM: без этого список после перерисовки только
+// дописывался бы, и удаление записи в тесте было бы не проверить.
 function makeElement(tag) {
+    let text = '';
     const node = {
         tagName: tag,
         children: [],
         className: '',
-        textContent: '',
         title: '',
         disabled: false,
+        handlers: {},
         classList: {
             add: name => { node.className += ' ' + name; },
             toggle: () => {}
         },
         append(...kids) { node.children.push(...kids); },
         appendChild(kid) { node.children.push(kid); },
-        addEventListener: () => {}
+        addEventListener(type, handler) { node.handlers[type] = handler; }
     };
+    Object.defineProperty(node, 'textContent', {
+        get: () => text,
+        set: value => {
+            text = value;
+            if (value === '') node.children.length = 0;
+        }
+    });
     return node;
 }
 
@@ -64,6 +76,10 @@ async function runPopup(stored) {
     const html = read('popup.html');
     const sources = [...html.matchAll(/<script\s+src="([^"]+)"/g)].map(m => m[1]);
     const dom = makeDom();
+    // Хранилище настоящего окна: get отдаёт то, что лежит сейчас, set кладёт
+    // новое. Иначе удаление записи в тесте выглядело бы как «ничего не
+    // изменилось» — заглушка возвращала бы исходный набор после каждой записи.
+    const state = { records: stored.slice(), writes: [] };
     const sandbox = {
         console,
         document: dom,
@@ -80,9 +96,12 @@ async function runPopup(stored) {
             runtime: { getURL: name => name },
             storage: {
                 local: {
-                    get: async () => ({ harvested: stored }),
-                    set: async () => {},
-                    remove: async () => {}
+                    get: async () => ({ harvested: state.records.slice() }),
+                    set: async data => {
+                        state.records = data.harvested.slice();
+                        state.writes.push(data.harvested);
+                    },
+                    remove: async () => { state.records = []; }
                 }
             },
             downloads: { download: async () => 1 }
@@ -92,7 +111,7 @@ async function runPopup(stored) {
     vm.createContext(sandbox);
     sources.forEach(name => vm.runInContext(read(name), sandbox, { filename: name }));
     await new Promise(resolve => setImmediate(resolve));
-    return { sandbox, dom, sources };
+    return { sandbox, dom, sources, state };
 }
 
 let failed = 0;
@@ -207,10 +226,50 @@ async function testCleanSet() {
     check('без повторов сводка молчит о дубликатах', !/Повторных/.test(summary), summary);
 }
 
+// ── удаление одной записи ──────────────────────────────────────────────────
+// Раньше передумать можно было только целиком («Очистить набор») — вместе с
+// теми записями, которые как раз нужны. Крестик у записи убирает ровно её.
+async function testDropRecord() {
+    const stored = [
+        { question: 'Первый вопрос', answer: '1' },
+        { question: 'Второй вопрос', answer: '2' },
+        { question: 'Третий вопрос', answer: '3' }
+    ];
+    const { dom, state } = await runPopup(stored);
+    const items = dom.getElementById('list').children;
+    equal('крестик есть у каждой записи', items.length, 3);
+
+    const drop = items[1].children
+        .find(child => child.className === 'head')
+        .children.find(child => child.className === 'drop');
+    check('у записи есть кнопка удаления', !!drop);
+    if (!drop) return;
+    check('у кнопки есть подсказка', /Убрать эту запись/.test(drop.title), drop.title);
+    // Проверяем и обработчик: кнопка без него выглядит рабочей, но не делает
+    // ничего — так уже пропадала кнопка копирования в content.js.
+    check('у кнопки есть обработчик', typeof drop.handlers.click === 'function');
+    if (typeof drop.handlers.click !== 'function') return;
+
+    await drop.handlers.click();
+    await new Promise(resolve => setImmediate(resolve));
+
+    equal('из набора убрана ровно одна запись', state.records.length, 2);
+    equal('убрана именно выбранная', state.records.map(r => r.question).join(' | '),
+        'Первый вопрос | Третий вопрос');
+    equal('список перерисован без неё', dom.getElementById('list').children.length, 2);
+    equal('другие записи не тронуты', state.records[0].answer + state.records[1].answer, '13');
+    check('окно сказало, что именно убрано',
+        /Убрано из набора: Второй вопрос/.test(dom.getElementById('status').textContent),
+        dom.getElementById('status').textContent);
+    check('сводка пересчитана', /В наборе 2 записи/.test(dom.getElementById('summary').textContent),
+        dom.getElementById('summary').textContent);
+}
+
 (async () => {
     await testKeySharedWithPage();
     await testDuplicatesShown();
     await testCleanSet();
+    await testDropRecord();
     console.log(failed
         ? `\n❌ Провалено: ${failed}, пройдено: ${passed}`
         : `\n✅ Всё сходится. Проверок пройдено: ${passed}`);

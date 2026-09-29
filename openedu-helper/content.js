@@ -1,7 +1,7 @@
 // Версия видна в консоли страницы и доступна отладчику: по ней легко
 // убедиться, что на вкладке работает именно этот файл, а не старый.
-const SCRIPT_VERSION = 'v7.0';
-console.log(`🚀 OpenEdu Helper ${SCRIPT_VERSION} ЗАПУЩЕН! (снятые ответы копятся в наборе расширения)`);
+const SCRIPT_VERSION = 'v7.3';
+console.log(`🚀 OpenEdu Helper ${SCRIPT_VERSION} ЗАПУЩЕН!`);
 
 // Правила сравнения текста (нормализация, кавычки, формулы, ключи) живут в
 // normalize.js: он подключается в manifest.json ПЕРЕД content.js и делит с ним
@@ -1214,6 +1214,70 @@ function makeMark(text, title, margin) {
     return mark;
 }
 
+// Записать решение задания в набор расширения и в память страницы.
+// Возвращает {records, saved}: records — что снято (пусто — снимать нечего),
+// saved — итог записи в набор (null, если хранилище не ответило).
+// Вынесено из обработчика клика по 📋: тем же кодом собирает набор кнопка
+// «забрать все решения» в шапке юнита (nav.js) — копия разошлась бы с
+// оригиналом, а правило «побеждает последняя» должно остаться одним на всех.
+async function harvestBlock(block, answersData) {
+    // Задание могли перерисовать — берём записи заново, с текущего DOM.
+    const records = harvestRecords(block, bodyOf(block));
+    if (!records.length) return { records, saved: null };
+    console.log('📋 Снято со страницы:\n' + JSON.stringify(records, null, 2));
+    const saved = await saveHarvested(records);
+    // Платформа ответ уже видела, поэтому держим его и в памяти страницы:
+    // задание сразу станет «найденным» и значок не откатится к ❌ при
+    // следующей перерисовке. В сам файл базы запись попадает только через
+    // выгрузку набора — у content-скрипта доступа к файлам нет.
+    //
+    // Запись с тем же вопросом ЗАМЕНЯЕТСЯ, а не дописывается: правило
+    // «побеждает последняя» одинаково в базе, в наборе и здесь.
+    records.forEach(record => {
+        const key = harvestKey(record);
+        const at = answersData.findIndex(item => harvestKey(item) === key);
+        if (at === -1) answersData.push(record);
+        else answersData[at] = record;
+    });
+    // Индекс базы построен по прежнему содержимому — пересобираем.
+    baseVersion += 1;
+    return { records, saved };
+}
+
+// Текст подтверждения по итогу записи в набор: одинаковый у значка 📋 и у
+// кнопки «забрать все решения» в шапке юнита.
+function harvestNote(saved) {
+    if (!saved) {
+        return { text: '📋❌', title: 'Не удалось записать в набор расширения. Записи '
+            + 'напечатаны в консоли (F12) — их можно перенести в базу руками.' };
+    }
+    if (!saved.added && !saved.updated) {
+        return { text: '📋🔁', title: 'Эти записи уже есть в наборе — второй раз не '
+            + 'добавлены. Всего в наборе: ' + saved.total + '.' };
+    }
+    if (!saved.added) {
+        return { text: '📋♻️', title: 'Новых вопросов нет, но у ' + saved.updated
+            + ' уже известных ответ другой — в наборе они заменены свежими. '
+            + 'Всего в наборе: ' + saved.total + '.' };
+    }
+    return { text: '📋✅', title: 'В набор добавлено записей: ' + saved.added
+        + (saved.updated ? ', заменено: ' + saved.updated : '')
+        + '. Всего в наборе: ' + saved.total
+        + '. Выгрузить его — клик по значку расширения на панели браузера.' };
+}
+
+// Можно ли по этому плану нажимать «Отправить». Отправка — единственное
+// необратимое действие расширения: платформа запоминает оценку, и вернуть её
+// потом нельзя. Поэтому жмём только когда ответ в базе есть ЦЕЛИКОМ и он не
+// вызывает сомнений — ни примерного совпадения (🟠: похожий вопрос вполне
+// может оказаться другим заданием), ни конфликтов кроссворда (такую клетку
+// платформа всё равно не примет).
+function submitAllowed(plan) {
+    if (!plan || !plan.matched || plan.matched !== plan.total) return false;
+    if (plan.approx) return false;
+    return !(plan.conflicts || []).length;
+}
+
 function harvestMark(block, answersData) {
     const verdict = statusOf(block);
     const about = verdict === 'correct' ? ' Платформа отметила ответ как верный.'
@@ -1225,46 +1289,11 @@ function harvestMark(block, answersData) {
         + 'выгружается из окна расширения (клик по его значку на панели браузера) '
         + 'и сливается с базой скриптом merge-answers.' + about, '6px');
     mark.addEventListener('click', async () => {
-        // Задание могли перерисовать — берём записи заново, с текущего DOM.
-        const records = harvestRecords(block, bodyOf(block));
+        const { records, saved } = await harvestBlock(block, answersData);
         if (!records.length) return;
-        console.log('📋 Снято со страницы:\n' + JSON.stringify(records, null, 2));
-        const saved = await saveHarvested(records);
-        // Платформа ответ уже видела, поэтому держим его и в памяти
-        // страницы: задание сразу станет «найденным» и значок не откатится
-        // к ❌ при следующей перерисовке. В сам файл базы запись попадает
-        // только через выгрузку набора — у content-скрипта доступа к файлам нет.
-        //
-        // Запись с тем же вопросом ЗАМЕНЯЕТСЯ, а не дописывается: правило
-        // «побеждает последняя» одинаково в базе, в наборе и здесь.
-        records.forEach(record => {
-            const key = harvestKey(record);
-            const at = answersData.findIndex(item => harvestKey(item) === key);
-            if (at === -1) answersData.push(record);
-            else answersData[at] = record;
-        });
-        // Индекс базы построен по прежнему содержимому — пересобираем.
-        baseVersion += 1;
-        if (!saved) {
-            mark.textContent = '📋❌';
-            mark.title = 'Не удалось записать в набор расширения. Записи напечатаны '
-                + 'в консоли (F12) — их можно перенести в базу руками.';
-        } else if (!saved.added && !saved.updated) {
-            mark.textContent = '📋🔁';
-            mark.title = 'Эти записи уже есть в наборе — второй раз не добавлены. '
-                + 'Всего в наборе: ' + saved.total + '.';
-        } else if (!saved.added) {
-            mark.textContent = '📋♻️';
-            mark.title = 'Новых вопросов нет, но у ' + saved.updated
-                + ' уже известных ответ другой — в наборе они заменены свежими. '
-                + 'Всего в наборе: ' + saved.total + '.';
-        } else {
-            mark.textContent = '📋✅';
-            mark.title = 'В набор добавлено записей: ' + saved.added
-                + (saved.updated ? ', заменено: ' + saved.updated : '')
-                + '. Всего в наборе: ' + saved.total
-                + '. Выгрузить его — клик по значку расширения на панели браузера.';
-        }
+        const note = harvestNote(saved);
+        mark.textContent = note.text;
+        mark.title = note.title;
         // даём увидеть подтверждение и перерисовываем значок: ответ теперь
         // считается найденным, значит на его месте будет ✅
         setTimeout(() => renderMarks(block, answersData), 900);
@@ -1278,10 +1307,11 @@ function briefQuestion(question) {
     return text.length > 70 ? `${text.slice(0, 69)}…` : text;
 }
 
-// Значки, которые должны стоять у задания прямо сейчас.
-function buildMarks(block, body, answersData) {
-    const plan = planFor(block, answersData);
-    // План считается заново и по клику: пока задание стоит на странице,
+// Значки, которые должны стоять у задания прямо сейчас. План сюда приходит
+// готовым: он посчитан в renderMarks, и там же уходит дальше — в значок
+// состояния базы в шапке юнита (nav.js). Считать его второй раз незачем.
+function buildMarks(block, body, answersData, plan) {
+    // План пересчитывается заново и по клику: пока задание стоит на странице,
     // его контролы могут быть заменены, и ссылки в старом плане протухнут.
     const apply = () => applyPlan(block, planFor(block, answersData));
     const marks = [];
@@ -1327,24 +1357,37 @@ function buildMarks(block, body, answersData) {
             + (near.length ? ': ни одна запись не подошла достаточно точно.' : '.')
             + nearby, '10px'));
     }
+
+    // 📋 — забрать решение в набор новых ответов. Ставится последним, справа
+    // от значка вердикта: сначала видно, что база думает про это задание,
+    // потом — кнопка забрать его себе.
+    // Задание должно быть заполнено целиком: половину решения в набор тащить
+    // незачем, а у кроссворда и таблицы недозаполненное задание вообще нечего
+    // записывать (harvestRecords в этом случае вернёт пусто).
+    if (isFilled(body)) marks.push(harvestMark(block, answersData));
+
     return marks;
 }
+// Возвращает план задания — он нужен вызывающему (processQuestions отдаёт
+// планы в nav.js). У задания без шапки или тела плана нет, и это null.
 function renderMarks(block, answersData) {
     const header = block.querySelector('h3.problem-header');
     const body = block.querySelector('div.problem');
-    if (!header || !body) return;
+    if (!header || !body) return null;
 
-    const fresh = buildMarks(block, body, answersData);
+    const plan = planFor(block, answersData);
+    const fresh = buildMarks(block, body, answersData, plan);
     const current = Array.from(header.querySelectorAll('span.helper-mark'));
     // Перерисовываем только когда набор значков изменился: страница шумит
     // мутациями постоянно, а наши же вставки — тоже мутации, и без этой
     // проверки мы гоняли бы себя по кругу.
     const same = current.length === fresh.length && current.every((mark, index) =>
         mark.textContent === fresh[index].textContent && mark.title === fresh[index].title);
-    if (same) return;
+    if (same) return plan;
 
     current.forEach(mark => mark.remove());
     fresh.forEach(mark => header.appendChild(mark));
+    return plan;
 }
 
 // ── основной проход ────────────────────────────────────────────────────────
@@ -1372,8 +1415,11 @@ async function processQuestions() {
     try {
         const answersData = await loadAnswers();
         if (!answersData) return;
-        document.querySelectorAll('div.problems-wrapper')
-            .forEach(block => renderMarks(block, answersData));
+        const blocks = Array.from(document.querySelectorAll('div.problems-wrapper'));
+        const plans = blocks.map(block => renderMarks(block, answersData));
+        // Отчитаться перед кнопками в шапке юнита (nav.js). Второй проход по
+        // заданиям ради них не нужен: планы уже посчитаны выше.
+        notifyNavState(blocks, plans);
     } catch (error) {
         console.error("❌ Критическая ошибка в processQuestions:", error);
     }

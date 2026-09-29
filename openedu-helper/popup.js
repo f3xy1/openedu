@@ -102,6 +102,19 @@ function groupRecords(records) {
     return groups;
 }
 
+// Убрать одну запись из набора. Именно из набора: в базе запись появится
+// только после слияния, а до него набор — единственное место, где можно
+// передумать. Раньше передумать можно было только целиком («Очистить набор»),
+// то есть вместе с теми записями, которые как раз нужны.
+async function dropRecord(index) {
+    const records = await readHarvested();
+    if (index < 0 || index >= records.length) return;
+    const [gone] = records.splice(index, 1);
+    await chrome.storage.local.set({ [HARVEST_KEY]: records });
+    say('Убрано из набора: ' + cut(gone.question || '(без текста)', 60));
+    await render();
+}
+
 function renderList(records, groups) {
     listEl.textContent = '';
     if (!records.length) {
@@ -132,7 +145,16 @@ function renderList(records, groups) {
         question.className = 'question';
         question.textContent = cut(record.question || '(без текста)', 90);
 
-        head.append(num, type, question);
+        // Крестик идёт последним в шапке записи: так он стоит на одной строке
+        // с номером и типом и не уезжает вниз при длинном вопросе.
+        const drop = document.createElement('button');
+        drop.type = 'button';
+        drop.className = 'drop';
+        drop.textContent = '✕';
+        drop.title = 'Убрать эту запись из набора — в базу она не попадёт.';
+        drop.addEventListener('click', () => dropRecord(index));
+
+        head.append(num, type, question, drop);
 
         const answer = document.createElement('div');
         answer.className = 'answer';
@@ -261,8 +283,8 @@ exportBtn.addEventListener('click', async () => {
     const saved = await saveFile(text);
     exportBtn.disabled = false;
     say(saved
-        ? 'Файл ' + EXPORT_NAME + ' сохранён. Теперь двойной клик по merge-answers.cmd '
-            + 'в папке проекта — и он сольётся с базой.'
+        ? 'Файл ' + EXPORT_NAME + ' сохранён. Теперь двойной клик по openedu.cmd '
+            + 'в папке проекта: пункт «Слить выгруженный набор в базу».'
         : 'Сохранить файл не удалось. Нажмите «Скопировать JSON» и вставьте '
             + 'содержимое в файл вручную.', !saved);
 });

@@ -64,6 +64,24 @@ h1 {
     overflow-wrap: anywhere;
 }
 
+/* Крестик у записи: обычная кнопка тут растянулась бы на всю строку
+   (у кнопок внизу окна flex: 1 1 auto), поэтому размер задан явно. */
+.item .drop {
+    flex: none;
+    align-self: flex-start;
+    padding: 0 4px;
+    border: none;
+    background: none;
+    color: #bbb;
+    font-size: 13px;
+    line-height: 1.2;
+}
+
+.item .drop:hover {
+    background: none;
+    color: #a33;
+}
+
 .item .answer {
     margin: 2px 0 0 24px;
     color: #2a6b3f;

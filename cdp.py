@@ -33,7 +33,7 @@
 в том, что требует «жеста», — например, в записи в буфер обмена.
 Переменные окружения: CDP_PORT (по умолчанию 9222), CDP_TIMEOUT (секунды).
 """
-import sys, io, json, argparse, os, urllib.request
+import sys, io, json, argparse, os, urllib.error, urllib.request
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
@@ -42,8 +42,19 @@ TIMEOUT = float(os.environ.get('CDP_TIMEOUT', '30'))
 
 
 def http(path):
-    with urllib.request.urlopen(f'http://127.0.0.1:{PORT}{path}', timeout=5) as r:
-        return json.loads(r.read().decode('utf-8'))
+    try:
+        with urllib.request.urlopen(f'http://127.0.0.1:{PORT}{path}',
+                                    timeout=5) as r:
+            return json.loads(r.read().decode('utf-8'))
+    except urllib.error.URLError as error:
+        # Без этого «нет порта» выходило простынёй трейсбека из urllib, а
+        # внятные подсказки ниже по коду (в pick и в ветке tabs) до дела не
+        # доходили: pages() падал раньше.
+        sys.exit(f'[!] Порт отладки {PORT} не отвечает: {error.reason}\n'
+                 f'    Браузер надо запустить с открытым портом — '
+                 f'browser-debug.cmd (или пункт меню в openedu.py).\n'
+                 f'    Флаг читается только при СТАРТЕ браузера: если он уже '
+                 f'запущен, порт не появится.')
 
 
 def pages():

@@ -5,7 +5,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const normalize = require(path.join(__dirname, '..', 'opendu-helper', 'normalize.js'));
+const normalize = require(path.join(__dirname, '..', 'openedu-helper', 'normalize.js'));
 
 const input = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
 const out = input.map(text => ({

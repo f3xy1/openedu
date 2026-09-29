@@ -7,7 +7,7 @@ merge-answers.py, docx_image_answers.py и content.js — и копии разъ
 и с обычными кавычками давал два разных ключа, и вторая запись считалась новой.
 
 Здесь правило живёт в одном месте. В браузере его зеркало —
-opendu-helper/normalize.js; совпадение двух реализаций проверяется тестом
+openedu-helper/normalize.js; совпадение двух реализаций проверяется тестом
 tests/test_norm_parity.py, который гоняет обе по одной таблице случаев.
 
 Три формы текста, и разница между ними принципиальна:
@@ -30,7 +30,7 @@ import sys
 import unicodedata
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-DEFAULT_BASE = os.path.join(HERE, 'opendu-helper', 'answers.json')
+DEFAULT_BASE = os.path.join(HERE, 'openedu-helper', 'answers.json')
 
 
 # ── тире и переносы ─────────────────────────────────────────────────────────
@@ -260,17 +260,31 @@ def dedupe_records(records):
 
 
 # ── чтение и запись базы ────────────────────────────────────────────────────
+def die(message):
+    """Ошибка данных: сообщение в stderr, выход кодом 2.
+
+    Код 2, а не привычный 1, — чтобы ошибку нельзя было спутать с ответом
+    «нашлось то, что искали»: так отвечает dedupe-answers.py --check, когда
+    дубликаты есть, и по этому коду меню в openedu.py решает, предлагать ли
+    удаление. Пока ошибки выходили кодом 1, «дубликаты есть» и «файл не
+    читается» выглядели одинаково.
+    """
+    print(message, file=sys.stderr)
+    sys.exit(2)
+
+
 def load_base(path):
     """Прочитать базу. Выход с сообщением, если файл не найден или не JSON."""
     if not os.path.exists(path):
-        sys.exit(f'[!] Файл не найден: {path}')
+        die(f'[!] Файл не найден: {path}')
     with open(path, encoding='utf-8') as f:
         try:
             data = json.load(f)
         except ValueError as error:
-            sys.exit(f'[!] {path} — это не разбирается как JSON: {error}')
+            die(f'[!] {path} — это не разбирается как JSON: {error}')
     if not isinstance(data, list):
-        sys.exit(f'[!] {path}: ожидался список записей, а там {type(data).__name__}.')
+        die(f'[!] {path}: ожидался список записей, а там '
+            f'{type(data).__name__}.')
     return data
 
 
@@ -304,11 +318,11 @@ def verify_written(path, expected):
     with open(path, encoding='utf-8', newline='') as f:
         raw = f.read()
     if raw != render_base(expected):
-        sys.exit(f'[!] После записи файл не совпал с задуманным — '
-                 f'возьмите копию: {path}.bak')
+        die(f'[!] После записи файл не совпал с задуманным — '
+            f'возьмите копию: {path}.bak')
     if load_base(path) != expected:
-        sys.exit(f'[!] После записи база читается не тем же списком — '
-                 f'возьмите копию: {path}.bak')
+        die(f'[!] После записи база читается не тем же списком — '
+            f'возьмите копию: {path}.bak')
 
 
 # ── мелочи для отчётов ──────────────────────────────────────────────────────

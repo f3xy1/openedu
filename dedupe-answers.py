@@ -10,6 +10,11 @@
     python dedupe-answers.py --check        только показать, файл не трогать
     python dedupe-answers.py --base файл.json
 
+С --check код возврата отвечает на вопрос «есть что чистить?»: 1 — дубликаты
+нашлись, 0 — база чистая. Так же ведут себя grep и diff, и по этому коду меню
+в openedu.py решает, предлагать ли удаление: спрашивать «удалить?», когда
+удалять нечего, — лишний вопрос.
+
 Оставляем ПОСЛЕДНЮЮ запись группы — то же правило, по которому теперь
 работает слияние. Вопросы сравниваются не посимвольно, а по ключу из
 qa_norm: кавычки, тире, разметка формул и регистр на ключ не влияют, поэтому
@@ -64,7 +69,8 @@ def main():
     ap.add_argument('--base', default=qa_norm.DEFAULT_BASE,
                     help='база для проверки (по умолчанию %(default)s)')
     ap.add_argument('--check', '--dry-run', dest='check', action='store_true',
-                    help='только показать, файл не трогать')
+                    help='только показать, файл не трогать '
+                         '(код возврата 1 — дубликаты есть)')
     args = ap.parse_args()
 
     records = qa_norm.load_base(args.base)
@@ -77,7 +83,7 @@ def main():
     if not dupes:
         print('Дубликатов не найдено — все вопросы уникальны.')
         print('Файл не тронут.')
-        return
+        return 0
 
     removed = 0
     drop = set()
@@ -120,7 +126,7 @@ def main():
 
     if args.check:
         print('\n--check: файл базы не тронут.')
-        return
+        return 1                  # дубликаты есть — см. код возврата в шапке
 
     backup = qa_norm.write_base(args.base, result)
     qa_norm.verify_written(args.base, result)
@@ -129,4 +135,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())

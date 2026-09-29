@@ -1,3 +1,16 @@
+# -*- coding: utf-8 -*-
+"""Разбор docx/pdf, размеченного маркерами: «•» — вопрос, «+» — верный ответ.
+
+    python converter.py путь\\к\\файлу.docx [answers.json]
+    python converter.py путь\\к\\файлу.pdf
+
+Ответы пишутся в тот же канонический вид, что и база расширения, поэтому
+результат можно сравнивать с базой и сливать с ней (qa_norm.render_base).
+
+Второй аргумент — куда писать. По умолчанию answers.json рядом с текущим
+каталогом; пункт меню в openedu.py спрашивает это отдельно и предупреждает,
+если файл уже есть.
+"""
 import os
 import json
 import re
@@ -122,6 +135,12 @@ def create_json_from_file(file_path, output_filename='answers.json'):
 
 if __name__ == "__main__":
     qa_norm.setup_console()
-    input_file = 'C:\\Users\\Denis\\Downloads\\asd.pdf'
+    # Раньше здесь стоял путь из чужих «Загрузок»: запуск без аргумента молча
+    # разбирал совсем не тот файл. Пусть лучше скажет, чего не хватает.
+    if len(sys.argv) < 2:
+        sys.exit('Укажите файл: python converter.py путь\\к\\файлу.docx '
+                 '[answers.json]')
+    input_file = sys.argv[1]
+    output_file = sys.argv[2] if len(sys.argv) > 2 else 'answers.json'
     
-    create_json_from_file(input_file)
+    create_json_from_file(input_file, output_file)

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "OpenEdu Helper",
-  "version": "1.6",
+  "version": "7.3",
   "description": "Помощник для прохождения тестов на openedu.ru",
   "permissions": ["storage", "downloads"],
   "action": {
@@ -11,7 +11,7 @@
   "content_scripts": [
     {
       "matches": ["*://*.openedu.ru/*"],
-      "js": ["normalize.js", "content.js"],
+      "js": ["normalize.js", "content.js", "nav.js"],
       "all_frames": true
     }
   ],
