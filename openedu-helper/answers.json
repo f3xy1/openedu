@@ -2262,12 +2262,12 @@
         "answer": "антропогенные"
     },
     {
-        "answer": "литосферные",
+        "answer": "атмосферные",
         "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@a1b9f4c7852649aa80b131ac871a469b",
         "question": "По локализации опасностей:"
     },
     {
-        "answer": "психофизиологические",
+        "answer": "химические",
         "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@a1b9f4c7852649aa80b131ac871a469b",
         "question": "По виду источника опасностей:"
     },
@@ -2282,7 +2282,7 @@
         "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@a1b9f4c7852649aa80b131ac871a469b"
     },
     {
-        "answer": "социальный ущерб",
+        "answer": "опасность смерти",
         "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@a1b9f4c7852649aa80b131ac871a469b",
         "question": "По виду ущерба:"
     },
@@ -4321,7 +4321,7 @@
         "question": "Выберите правильный вариант ответа Полярная звезда входит в созвездие…"
     },
     {
-        "answer": "Х",
+        "answer": "Y",
         "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@88701c703f1340dead5f514c7bc74ed0",
         "question": "Выберите правильный вариант ответа При определении плоских прямоугольных координат вертикальная ось обозначается буквой…"
     },
@@ -4585,8 +4585,8 @@
         "question": "2. Какое действие необходимо провести незамедлительно?"
     },
     {
-        "answer": "артериальное кровотечение",
-        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@ab9d80fcc041cf4d9e80",
+        "answer": "онемение или слабость мышц с одной стороны тела",
+        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@09704557d2099c074102",
         "question": "3. Какой фактор наиболее значимо будут влиять на состояние пострадавшего в данной ситуации?"
     },
     {
@@ -4844,13 +4844,13 @@
         "question": "В июле 2021г. Пекин объявил жёлтый уровень опасности из-за непрекращающихся дождей. За 2 дня в районе Пекина выпало рекордное количество осадков. Были затоплены 2 станции метро, повреждены дома, железная дорога. Наводнение разрушило две дамбы и затопило сельскохозяйственные угодья. В результате затопления метро – в вагонах погибли 12 человек, эвакуировано 500 человек, 5 – госпитализированы. Люди находились в воде около двух часов. Из города было эвакуировано около 200 000 человек, погибли 4 человека, повреждены дороги и здания. 1. Классифицируйте данное опасное явление по происхождению опасности:"
     },
     {
-        "answer": "гидросфера",
-        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@6be7100018ec1256e52a",
+        "answer": "атмосфера",
+        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@cd243a3bca81bc28a5e3",
         "question": "2. Где при данном опасном явлении локализовались основные опасности:"
     },
     {
-        "answer": "физические",
-        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@6be7100018ec1256e52a",
+        "answer": "биологические",
+        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@cd243a3bca81bc28a5e3",
         "question": "3. Какие виды источника опасностей вызвали наибольшие разрушения и жертвы:"
     },
     {
@@ -4860,19 +4860,19 @@
     },
     {
         "answer": [
-            "опасность травм",
             "опасность заболеваний",
             "опасность смерти"
         ],
-        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@6be7100018ec1256e52a",
+        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@cd243a3bca81bc28a5e3",
         "question": "5. Какие опасные последствия для здоровья населения вызвала данная ситуация:"
     },
     {
         "answer": [
             "экономический ущерб",
+            "социальный ущерб",
             "ущерб здоровью"
         ],
-        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@6be7100018ec1256e52a",
+        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@cd243a3bca81bc28a5e3",
         "question": "6. Какие виды ущерба принесло данное опасное явление:"
     },
     {
@@ -4905,27 +4905,27 @@
         "question": ".input-table td, .input-table th{ padding: 6px 6px !important; border: 1px solid #e5e5e5 !important; } .input-table td.center, .input-table th.center{ text-align: center !important; } .input-table .equation{ display: none !important; } .input-table .inputtype.option-input { margin: 0px 0 0px !important; } .input-table .inputtype.formulaequationinput input { height: auto !important; } Для снижения риска травматизма на производстве и повышения уровня безопасности необходимо: рассчитать показатели индивидуального риска травматизма на производстве для переломов, порезов конечностей, ожогов и падений с высоты за 2018-2019 годы, если число травмированных , а число работающих ; распределить виды травм для данного предприятия по уровню риска; проанализировать опасности, приводящие к травме с наибольшим уровнем риска и указать пути повышения уровня безопасности на производстве. 1. Рассчитайте показатели индивидуального риска травматизма на производстве за 2018 год, если число работающих . Вид травмы Число травмированных, Показатель индивидуального риска травматизма Переломы 11"
     },
     {
-        "answer": "3",
+        "answer": "4",
         "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@52f59e40a93b428381d82213c1e9d805",
         "question": ".input-table td, .input-table th{ padding: 6px 6px !important; border: 1px solid #e5e5e5 !important; } .input-table td.center, .input-table th.center{ text-align: center !important; } .input-table .equation{ display: none !important; } .input-table .inputtype.option-input { margin: 0px 0 0px !important; } .input-table .inputtype.formulaequationinput input { height: auto !important; } 2. Распределите виды травм по уровню риска за 2018 год в соответствующих ячейках таблицы: Вид травмы Уровень риска (1, 2, 3 или 4) Переломы"
     },
     {
-        "answer": "1",
+        "answer": "3",
         "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@52f59e40a93b428381d82213c1e9d805",
         "question": ".input-table td, .input-table th{ padding: 6px 6px !important; border: 1px solid #e5e5e5 !important; } .input-table td.center, .input-table th.center{ text-align: center !important; } .input-table .equation{ display: none !important; } .input-table .inputtype.option-input { margin: 0px 0 0px !important; } .input-table .inputtype.formulaequationinput input { height: auto !important; } 2. Распределите виды травм по уровню риска за 2018 год в соответствующих ячейках таблицы: Порезы конечностей"
     },
     {
-        "answer": "2",
+        "answer": "1",
         "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@52f59e40a93b428381d82213c1e9d805",
         "question": ".input-table td, .input-table th{ padding: 6px 6px !important; border: 1px solid #e5e5e5 !important; } .input-table td.center, .input-table th.center{ text-align: center !important; } .input-table .equation{ display: none !important; } .input-table .inputtype.option-input { margin: 0px 0 0px !important; } .input-table .inputtype.formulaequationinput input { height: auto !important; } 2. Распределите виды травм по уровню риска за 2018 год в соответствующих ячейках таблицы: Ожоги"
     },
     {
-        "answer": "4",
+        "answer": "2",
         "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@52f59e40a93b428381d82213c1e9d805",
         "question": ".input-table td, .input-table th{ padding: 6px 6px !important; border: 1px solid #e5e5e5 !important; } .input-table td.center, .input-table th.center{ text-align: center !important; } .input-table .equation{ display: none !important; } .input-table .inputtype.option-input { margin: 0px 0 0px !important; } .input-table .inputtype.formulaequationinput input { height: auto !important; } 2. Распределите виды травм по уровню риска за 2018 год в соответствующих ячейках таблицы: Падение с высоты"
     },
     {
-        "answer": "4",
+        "answer": "2",
         "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@52f59e40a93b428381d82213c1e9d805",
         "question": ".input-table td, .input-table th{ padding: 6px 6px !important; border: 1px solid #e5e5e5 !important; } .input-table td.center, .input-table th.center{ text-align: center !important; } .input-table .equation{ display: none !important; } .input-table .inputtype.option-input { margin: 0px 0 0px !important; } .input-table .inputtype.formulaequationinput input { height: auto !important; } 4. Распределите виды травм по уровню риска за 2019 год в соответствующих ячейках таблицы: Вид травмы Уровень риска (1, 2, 3 или 4) Переломы"
     },
@@ -4940,7 +4940,7 @@
         "question": ".input-table td, .input-table th{ padding: 6px 6px !important; border: 1px solid #e5e5e5 !important; } .input-table td.center, .input-table th.center{ text-align: center !important; } .input-table .equation{ display: none !important; } .input-table .inputtype.option-input { margin: 0px 0 0px !important; } .input-table .inputtype.formulaequationinput input { height: auto !important; } 4. Распределите виды травм по уровню риска за 2019 год в соответствующих ячейках таблицы: Ожоги"
     },
     {
-        "answer": "2",
+        "answer": "4",
         "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@52f59e40a93b428381d82213c1e9d805",
         "question": ".input-table td, .input-table th{ padding: 6px 6px !important; border: 1px solid #e5e5e5 !important; } .input-table td.center, .input-table th.center{ text-align: center !important; } .input-table .equation{ display: none !important; } .input-table .inputtype.option-input { margin: 0px 0 0px !important; } .input-table .inputtype.formulaequationinput input { height: auto !important; } 4. Распределите виды травм по уровню риска за 2019 год в соответствующих ячейках таблицы: Падение с высоты"
     },
@@ -6044,5 +6044,299 @@
         "answer": "целевой",
         "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@f292631cf5fc105d5d93",
         "question": "Согласно ГОСТ 12.0.004-90 при выполнении работ по наряду-допуску проводится __________ инструктаж"
+    },
+    {
+        "answer": "командиру воинской части",
+        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@8e3fc24da8d3dc27f029",
+        "question": "Выберите правильный вариант ответа При совершении военнослужащим грубого дисциплинарного проступка или при получении данных о его совершении непосредственный командир военнослужащего обязан немедленно доложить…"
+    },
+    {
+        "answer": [
+            "воинский учет",
+            "призыв и прохождение военной службы по призыву",
+            "обязательную подготовку к военной службе",
+            "пребывание в запасе"
+        ],
+        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@9293cc8d900a0e763701",
+        "question": "Выберите все правильные варианты ответа Структуравоинской обязанности граждан Российской Федерации включает в себя:"
+    },
+    {
+        "answer": "1 года",
+        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@d8c7f68263f5c3b2f516",
+        "question": "Выберите правильный вариант ответа Военнослужащий НЕ может быть привлечен к дисциплинарной ответственности по истечении _______ со дня совершения дисциплинарного проступка"
+    },
+    {
+        "answer": "10",
+        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@5ca32cee04eef9fa288e",
+        "question": "Выберите правильный вариант ответа Военнослужащие, к которым применено дисциплинированное взыскание, могут его обжаловать в течение ___ суток"
+    },
+    {
+        "answer": "2",
+        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@b60939abda48053c5d8f",
+        "question": "Выберите правильный вариант ответа Боеприпасами караул обеспечивается из расчета на каждый автомат и пистолет – по _____ снаряженных магазина"
+    },
+    {
+        "answer": [
+            "Конституция Российской Федерации и Военная доктрина Российской Федерации",
+            "Федеральный закон от 28 марта 1998 г. № 53-ФЗ «О воинской обязанности и военной службе» и Указ Президента РФ от 16 сентября 1999 г. № 1237 «Вопросы прохождения военной службы»",
+            "Федеральные законы «О ветеранах», «Об обороне», «О статусе военнослужащих», «Об обязательном государственном страховании жизни и здоровья военнослужащих, граждан, призванных на военные сборы, лиц рядового и начальствующего состава органов внутренних дел Российской Федерации, сотрудников учреждений и органов уголовно-исполнительной системы и сотрудников федеральных органов налоговой полиции» и другие НПА"
+        ],
+        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@f26e600b1da869952f5e",
+        "question": "Выберите все правильные варианты ответа Прохождение военной службы в Российской Федерации регламентируют следующие законодательные акты:"
+    },
+    {
+        "answer": "командир подразделения",
+        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@769f7fac2325e037a860",
+        "question": "Выберите правильный вариант ответа За состояние воинской дисциплины в подразделении отвечает…"
+    },
+    {
+        "answer": "в период с 1 января по 31 марта в год достижения ими возраста 17 лет",
+        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@20814b44efda4bf4a6f3",
+        "question": "Выберите правильный вариант ответа Первоначальная постановка граждан на воинский учет осуществляется…"
+    },
+    {
+        "answer": "ко всем военнослужащим",
+        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@eef844b676f0c6fef5cf",
+        "question": "Выберите правильный вариант ответа Поощрение «Объявление благодарности» может применяться…"
+    },
+    {
+        "answer": "вооруженный караульный, выполняющий боевую задачу по охране и обороне порученного ему поста",
+        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@e7c48c6fab9a2b30ce90",
+        "question": "Выберите правильный вариант ответа Часовым называется…"
+    },
+    {
+        "answer": "5 часовых, а следование на посты, смена часовых и возвращение в караульное помещение занимали не более 1 часа",
+        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@6fbaecd677278f55d6de",
+        "question": "Выберите правильный вариант ответа Число разводящих определяется в зависимости от количества и расположения постов с таким расчетом, чтобы каждый разводящий выставлял на посты не более…"
+    },
+    {
+        "answer": [
+            "по призыву",
+            "по контракту",
+            "в добровольном порядке"
+        ],
+        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@26318056d88a26aba8f4",
+        "question": "Выберите все правильные варианты ответа Прохождение военной службы осуществляется:"
+    },
+    {
+        "answer": "3–5",
+        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@93faaaba7557e094202c",
+        "question": "Выберите правильный вариант ответа В роте оборудуется душевая из расчета ___ душевых сеток на этажную казарменную секцию"
+    },
+    {
+        "answer": "задний борт",
+        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@fd6abd2d5bb93b499719",
+        "question": "Выберите правильный вариант ответа Посадка военнослужащих на автомобили производится через…"
+    },
+    {
+        "answer": "расстояние в глубину между военнослужащими",
+        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@1204ea69184c9d425e10",
+        "question": "Выберите правильный вариант ответа Дистанция – это…"
+    },
+    {
+        "answer": "строй, в котором военнослужащие расположены в затылок друг к другу",
+        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@7cc3f0ac80a8d9b37866",
+        "question": "Выберите правильный вариант ответа Колонна – это…"
+    },
+    {
+        "answer": "2 счета",
+        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@ef41ffa81dfd688196f3",
+        "question": "Выберите правильный вариант ответа Перестроение отделения на месте из одной шеренги в две и обратно производится на…"
+    },
+    {
+        "answer": "900",
+        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@cbd752a36233c2869f14",
+        "question": "Начальная скорость полета пули весом 3,4 г, выпущенной из АК-74, составляет ___ м/с"
+    },
+    {
+        "answer": [
+            "головной части со взрывчатым веществом",
+            "взрывателя",
+            "реактивного двигателя",
+            "стабилизатора, размещенного в пороховом заряде"
+        ],
+        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@caf1a3827d22a2fb75d9",
+        "question": "Выберите правильный вариант ответа Противотанковая граната состоит из следующих основных частей:"
+    },
+    {
+        "answer": "борьба с танками, самоходно-артиллерийскими установками и другими бронированными средствами противника; кроме того, он может быть использован для уничтожения живой силы противника, находящейся в легких укрытиях, а также в сооружениях городского типа",
+        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@611b096b61d0322103da",
+        "question": "Выберите правильный вариант ответа Назначение ручного противотанкового гранатомета РПГ-7 – это…"
+    },
+    {
+        "answer": "1000",
+        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@dcf118410b6f479ec42b",
+        "question": "Прицельная дальность пулемета РПК-74 ___ м"
+    },
+    {
+        "answer": "оптический",
+        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@139ba310a4d9df23daf8",
+        "question": "Выберите правильный вариант ответа Основным прицелом гранатомета РПГ-7 является…"
+    },
+    {
+        "answer": "20 мм",
+        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@d8552456f3a7bed8fef8",
+        "question": "Выберите правильный вариант ответа Калибр пушки боевой машины пехоты БМП Marder…"
+    },
+    {
+        "answer": "ПТУР Javelin",
+        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@03befc47b2e6ac80ff05",
+        "question": "Выберите правильный вариант ответа На изображении представлено изделие…"
+    },
+    {
+        "answer": "«Отделение, в атаку – ВПЕРЕД»",
+        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@725ad2fb96a934387e56",
+        "question": "Выберите правильный вариант ответа По команде (сигналу) командира взвода о начале движения в атаку командир отделения подает команду…"
+    },
+    {
+        "answer": "инженерная разведка противника, местности и объектов; фортификационное оборудование опорного пункта взвода (боевой позиции отделения, огневых позиций танка), места развертывания командно-наблюдательного пункта взвода и расположения на месте",
+        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@3babcb85abd115d3c8ad",
+        "question": "Выберите правильный вариант ответа Основными задачами инженерного обеспечения во взводе (отделении, для экипажа танка) являются…"
+    },
+    {
+        "answer": "Rheinmetall",
+        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@33c5c077bf653e3fb1af",
+        "question": "Выберите правильный вариант ответа Танк Leopard производится фирмой…"
+    },
+    {
+        "answer": "1 500 л. с.",
+        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@7ef7a3c42a0761a8143d",
+        "question": "Выберите правильный вариант ответа Мощность двигателя танка Leopard 2А5 ‒ …"
+    },
+    {
+        "answer": "ПФМ-1С",
+        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@f75b1d533e61ce0485de",
+        "question": "Выберите правильный вариант ответа На изображении представлена противопехотная мина…"
+    },
+    {
+        "answer": "2",
+        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@0dc895b2064fa5e26663",
+        "question": "Выберите правильный вариант ответа Если у военнослужащего размер ноги 42, то ему необходимы чулки (из комплекта ОЗК) размера…"
+    },
+    {
+        "answer": "наземным",
+        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@e3ae4ba51fedf9aaed37",
+        "question": "Выберите правильный вариант ответа Взрыв на поверхности земли (контактный) или на такой высоте, когда светящаяся область касается поверхности земли, называется…"
+    },
+    {
+        "answer": "воздушном",
+        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@4b43c55314a13a2435fb",
+        "question": "Выберите правильный вариант ответа Радиус зоны разрушающего действия ударной волны будет наибольшим для жилых зданий при __________ ядерном взрыве"
+    },
+    {
+        "answer": "иприт",
+        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@eedabec4f9661b7ce38e",
+        "question": "Выберите правильный вариант ответа Зуд, жжение, покраснение кожи, отечность, образование язв, жжение глаз, спазм век, слезотечение, чувство засоренности глаза, воспаление дыхательных путей, першение в горле, потеря голоса, отек легких, сильные боли в желудке, рвота, жажда – признаки поражения отравляющим веществом…"
+    },
+    {
+        "answer": "1,5",
+        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@fd8b27c5c9c97f809cfd",
+        "question": "Выберите правильный вариант ответа Средняя пара шагов равна ___ метра"
+    },
+    {
+        "answer": "западной",
+        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@75cc84f0af3852a62b4a",
+        "question": "Выберите правильный вариант ответа Главные входы православных церквей, часовен и лютеранских кирок расположены с ________ стороны"
+    },
+    {
+        "answer": "3°",
+        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@3aa49c525fef6932b4f2",
+        "question": "Выберите правильный вариант ответа Цена деления лимба компаса Адрианова в градусах составляет…"
+    },
+    {
+        "answer": "3",
+        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@ae2064e09c40bcb18e4d",
+        "question": "Выберите правильный вариант ответа При определении сторон горизонта по Луне и часам, если время 23:00 часа, а Луна убывает и составляет 6 частей (половину диска), направление на юг будет указывать воображаемая линия от центра циферблата к цифре…"
+    },
+    {
+        "answer": [
+            "на 4 части",
+            "на 9 частей"
+        ],
+        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@29538174f345c4c88c90",
+        "question": "Выберите все правильные варианты ответа Для целеуказания по карте квадрат километровой сетки мысленно может делиться:"
+    },
+    {
+        "answer": "7",
+        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@baef281c49e9c78f87eb",
+        "question": "Выберите правильный вариант ответа Полные прямоугольные координаты оси абсцисс содержат __ цифр"
+    },
+    {
+        "answer": "северной",
+        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@bd73f107d40395b8907a",
+        "question": "Выберите правильный вариант ответа Стволы деревьев, камни и пни, крыши домов покрыты мхом или лишайником с ________ стороны"
+    },
+    {
+        "answer": "5 отрезков",
+        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@89271006a804766d94a4",
+        "question": "Выберите правильный вариант ответа Чтобы найти в созвездии Малой Медведицы Полярную звезду, которая указывает направление на север, нужно мысленно провести линию вверх, через две крайние звезды «ковша» созвездия Большой Медведицы, отложив на этой линии _____________, равных отрезку между двумя крайними звездами «ковша»"
+    },
+    {
+        "answer": "венозное",
+        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@c661fb04c15743d5ed98",
+        "question": "При отрезании куска доски ножом, он неожиданно выскочил из доски и глубоко поранил ногу выше колена. Из раны вытекает струёй кровь темно-красного цвета. Определите вид кровотечения и укажите последовательность оказания первой помощи при наличии аптечки для оказания первой помощи. 1. Какое кровотечение у пострадавшего?"
+    },
+    {
+        "answer": [
+            "прямое давление на рану марлевым бинтом",
+            "наложение гемостатической повязки"
+        ],
+        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@c661fb04c15743d5ed98",
+        "question": "2. Укажите способ временной остановки данного кровотечения?"
+    },
+    {
+        "answer": "доставить пострадавшего в лечебное учреждение",
+        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@c661fb04c15743d5ed98",
+        "question": "3. Требуется ли доставка пострадавшего в лечебное учреждение?"
+    },
+    {
+        "answer": [
+            "бинт марлевый стерильный",
+            "повязка гемостатическая"
+        ],
+        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@c661fb04c15743d5ed98",
+        "question": "4. Какие из позиций аптечки необходимо применить для оказания первой помощи?"
+    },
+    {
+        "answer": "расходное и инвентарное",
+        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@5076ed867ed27292d6e4",
+        "question": "Выберите правильный вариант ответа Медицинское имущество, предназначенное для хранения, отпуска и применения, делят на следующие виды:"
+    },
+    {
+        "answer": "оказание простейших действий, чтобы спасти жизнь раненого и предупредить развитие осложнений",
+        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@ab5aa81b1d1ee59dce1c",
+        "question": "Выберите правильный вариант ответа Основная цель первой помощи, взаимопомощи и самопомощи в боевой обстановке – это…"
+    },
+    {
+        "answer": "антибиотики широкого спектра действия",
+        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@3f8c61cfff227b9b3d5d",
+        "question": "Выберите правильный вариант ответа Для проведения экстренной профилактики военнослужащих в очагах биологического поражения применяются…"
+    },
+    {
+        "answer": [
+            "естественные (природные)",
+            "антропогенные"
+        ],
+        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@cd243a3bca81bc28a5e3",
+        "question": "Первый официально подтверждённый случай испанского гриппа, был зафиксирован в 1918 году в Канзасе. Рядовой-кавалерист пожаловался полковым медикам на очень сильную простуду, с ознобом и кашлем. В лазарете решили, что солдата просто просквозило, но всего за несколько часов количество заболевших достигло уже ста человек. Врачам стало ясно, что речь идёт о начале эпидемии. Число умерших от «испанки» достоверно неизвестно, различные оценки составляют от 17 до 100 млн человек. Пандемия началась в последние месяцы Первой мировой войны и быстро обошла эту войну по числу жертв. В России эпидемия испанки совпала с Гражданской войной и одновременно с эпидемиями сыпного тифа и других инфекционных болезней. Ей переболели ориентировочно 1 млн. человек. Антисанитария создала идеальные условия для ее распространения. 1. Классифицируйте данное опасное явление по происхождению опасности:"
+    },
+    {
+        "answer": "антропогенные",
+        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@a1b9f4c7852649aa80b131ac871a469b",
+        "question": "Задание. Классифицировать опасности по ситуационной картине среды обитания человека. При проведении строительных работ на территории жилой застройки тракторист Степанов повредил трубу газопровода. Какие виды опасностей присутствуют в зоне аварии газопровода? По происхождению:"
+    },
+    {
+        "answer": [
+            "0.00232",
+            "0.00348",
+            "0.01507",
+            "0.00406",
+            "0.00464",
+            "0.00406",
+            "0.01449",
+            "0.00290"
+        ],
+        "problem_id": "block-v1:urfu+MILITRLIFESAFETY+fall_2026+type@problem+block@52f59e40a93b428381d82213c1e9d805",
+        "question": ".input-table td, .input-table th{ padding: 6px 6px !important; border: 1px solid #e5e5e5 !important; } .input-table td.center, .input-table th.center{ text-align: center !important; } .input-table .equation{ display: none !important; } .input-table .inputtype.option-input { margin: 0px 0 0px !important; } .input-table .inputtype.formulaequationinput input { height: auto !important; } Для снижения риска травматизма на производстве и повышения уровня безопасности необходимо: рассчитать показатели индивидуального риска травматизма на производстве для переломов, порезов конечностей, ожогов и падений с высоты за 2018-2019 годы, если число травмированных , а число работающих ; распределить виды травм для данного предприятия по уровню риска; проанализировать опасности, приводящие к травме с наибольшим уровнем риска и указать пути повышения уровня безопасности на производстве. 1. Рассчитайте показатели индивидуального риска травматизма на производстве за 2018 год, если число работающих . Вид травмы Число травмированных, Показатель индивидуального риска травматизма Переломы 4"
     }
 ]
