@@ -1,12 +1,12 @@
 {
   "manifest_version": 3,
-  "name": "OpenEdu Helper",
-  "version": "7.3",
+  "name": "Openedu Helper",
+  "version": "7.4",
   "description": "Помощник для прохождения тестов на openedu.ru",
   "permissions": ["storage", "downloads"],
   "action": {
     "default_popup": "popup.html",
-    "default_title": "OpenEdu Helper — набор снятых ответов"
+    "default_title": "Openedu Helper — набор снятых ответов"
   },
   "content_scripts": [
     {

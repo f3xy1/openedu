@@ -2,27 +2,59 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>OpenEdu Helper</title>
+<title>Openedu Helper</title>
 <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-  <h1>OpenEdu Helper</h1>
-  <p class="summary" id="summary">Читаю набор…</p>
+  <h1>Openedu Helper</h1>
 
-  <div class="list" id="list"></div>
+  <!-- Две вкладки: «Курсы» — что уже лежит в базе, «Набор» — выгрузка снятых
+       ответов. Открывается всегда «Курсы» (showTab в popup.js), а hidden на
+       панели набора стоит только для того, чтобы она не мелькнула до
+       выполнения скрипта. -->
+  <nav class="tabs">
+    <button type="button" class="tab active" id="tab-courses">Курсы</button>
+    <button type="button" class="tab" id="tab-set">Набор</button>
+  </nav>
 
-  <div class="buttons">
-    <button id="export" class="primary">Экспорт…</button>
-    <button id="copy">Скопировать JSON</button>
-    <button id="clear" class="danger">Очистить набор</button>
-  </div>
+  <section class="pane" id="pane-courses">
+    <!-- Поиск идёт под вкладками и над списком. Иконка — svg поверх поля, а не
+         символ шрифта: символ зависел бы от того, есть ли он в системном
+         шрифте, и на чужой машине мог оказаться квадратиком. -->
+    <div class="search">
+      <svg class="search-icon" viewBox="0 0 16 16" aria-hidden="true">
+        <circle cx="7" cy="7" r="4.5"></circle>
+        <line x1="10.4" y1="10.4" x2="14" y2="14"></line>
+      </svg>
+      <input type="search" id="courses-search" autocomplete="off"
+             placeholder="Поиск курса по названию">
+    </div>
 
-  <p class="status" id="status"></p>
-  <p class="hint">
-    Выгруженный файл сливается с базой двойным кликом по
-    <code>openedu.cmd</code> в папке проекта — пункт «Слить выгруженный
-    набор в базу».
-  </p>
+    <div class="list" id="courses"></div>
+    <p class="hint" id="courses-summary">Читаю список курсов…</p>
+  </section>
+
+  <section class="pane" id="pane-set" hidden>
+    <!-- Под заголовком осталась только строка про повторы: счётчик записей
+         убран, но о повторах знать обязательно — при слиянии по каждому
+         вопросу останется последняя запись, и какая именно, видно в списке. -->
+    <p class="summary" id="summary"></p>
+
+    <div class="list" id="list"></div>
+
+    <div class="buttons">
+      <button id="export" class="primary">Экспорт…</button>
+      <button id="copy">Скопировать JSON</button>
+      <button id="clear" class="danger">Очистить набор</button>
+    </div>
+
+    <p class="status" id="status"></p>
+    <p class="hint">
+      Выгруженный файл сливается с базой двойным кликом по
+      <code>openedu.cmd</code> в папке проекта — пункт «Слить выгруженный
+      набор в базу».
+    </p>
+  </section>
 
   <script src="normalize.js"></script>
   <script src="popup.js"></script>

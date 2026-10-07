@@ -1,12 +1,20 @@
-// Окно расширения: показывает набор снятых ответов и выгружает его файлом.
-// Читает то же хранилище, куда пишет значок 📋 на странице курса, — общего кода
-// у них нет, но правила сравнения текста общие: normalize.js подключён в
-// popup.html ПЕРЕД этим файлом, ровно как в manifest.json перед content.js.
-// Поэтому ключ записи здесь считается той же функцией, что и на странице, — а
-// не её пересказом, который раньше и разошёлся с оригиналом.
+// Окно расширения. Две вкладки: «Курсы» — витрина базы по списку из
+// courses.json (файл ведётся руками, окно его только читает), «Набор» —
+// снятые со страницы ответы и выгрузка их файлом.
+//
+// Набор окно читает из того же хранилища, куда пишет значок 📋 на странице
+// курса, — общего кода у них нет, но правила сравнения текста общие:
+// normalize.js подключён в popup.html ПЕРЕД этим файлом, ровно как в
+// manifest.json перед content.js. Поэтому ключ записи здесь считается той же
+// функцией, что и на странице, — а не её пересказом, который раньше и
+// разошёлся с оригиналом.
 
 const HARVEST_KEY = 'harvested';
 const EXPORT_NAME = 'answers-new.json';
+
+// Список курсов, ответы которых уже лежат в базе. Файл ведётся РУКАМИ: окно
+// его только читает и показывает, ни один скрипт в него не пишет.
+const COURSES_FILE = 'courses.json';
 
 // Ключ записи набора — ТОЛЬКО текст вопроса, как в content.js и в
 // qa_norm.record_key. Раньше в ключ входил ещё и ответ, поэтому один и тот же
@@ -30,6 +38,28 @@ const statusEl = document.getElementById('status');
 const exportBtn = document.getElementById('export');
 const copyBtn = document.getElementById('copy');
 const clearBtn = document.getElementById('clear');
+const coursesEl = document.getElementById('courses');
+const coursesNoteEl = document.getElementById('courses-summary');
+const searchEl = document.getElementById('courses-search');
+
+// Вкладки окна: имя вкладки, её кнопка и её панель. Кнопки и панели берутся
+// по id, а не через querySelectorAll — так их находит и заглушка DOM в тестах,
+// где настоящего дерева нет.
+const TABS = ['courses', 'set'].map(name => ({
+    name: name,
+    button: document.getElementById('tab-' + name),
+    pane: document.getElementById('pane-' + name)
+}));
+
+// Переключение вкладок задаётся ОДНОЙ функцией и для загрузки, и для клика:
+// иначе подсветка вкладки и видимость панели могли бы разъехаться.
+function showTab(name) {
+    TABS.forEach(tab => {
+        const active = tab.name === name;
+        tab.button.classList.toggle('active', active);
+        tab.pane.hidden = !active;
+    });
+}
 
 // Вид записи — то же правило, что в content.js: у кроссворда ответ объект,
 // таблица помечена полем type.
@@ -81,6 +111,117 @@ async function baseSize() {
     } catch (error) {
         return null;
     }
+}
+
+// ── вкладка «Курсы» ────────────────────────────────────────────────────────
+// Файл ведётся руками, поэтому разбор терпимый: пробелы по краям строк
+// обрезаются, пустые строки пропускаются. Но непонятное содержимое молча
+// пустым списком не показывается — иначе опечатка в json выглядела бы как
+// «курсов нет», и было бы непонятно, что чинить.
+async function readCourses() {
+    let data;
+    try {
+        const response = await fetch(chrome.runtime.getURL(COURSES_FILE));
+        if (!response.ok) {
+            return { names: [], error: COURSES_FILE + ' не читается (' + response.status + ').' };
+        }
+        data = await response.json();
+    } catch (error) {
+        return { names: [], error: COURSES_FILE + ' не читается: ' + error.message };
+    }
+    if (!Array.isArray(data)) {
+        return { names: [], error: COURSES_FILE + ': ожидался список названий вида '
+            + '["Курс", "Курс"].' };
+    }
+    const names = [];
+    let odd = 0;
+    data.forEach(item => {
+        if (typeof item !== 'string') { odd += 1; return; }
+        const name = item.trim();
+        if (name) names.push(name);
+    });
+    return { names: names, error: odd
+        ? 'В ' + COURSES_FILE + ' пропущено непонятных строк: ' + odd
+            + ' — названия должны быть строками.'
+        : null };
+}
+
+// Названия из файла и текст последней ошибки — в памяти: поиск фильтрует
+// список на каждый ввод, и перечитывать файл на каждую букву незачем.
+let courseNames = [];
+let coursesError = null;
+
+// Поиск по названию. Сравниваются нормализованные тексты — тем же
+// normalizeText из normalize.js, что и поиск ответов на странице: ни регистр,
+// ни лишние пробелы, ни «ёлочки» с тире в названии не мешают. Своего правила
+// тут быть не должно — иначе окно искало бы не так, как страница.
+// (Буква «ё» остаётся «ё»: таково общее правило проекта, normalizeText её не
+// сворачивает, и отдельное послабление здесь разошлось бы с ним.)
+function filteredNames(names, query) {
+    const needle = normalizeText(String(query || ''));
+    if (!needle) return names;
+    return names.filter(name => normalizeText(name).indexOf(needle) !== -1);
+}
+
+// Список рисуется и по загрузке, и на каждый ввод в поиске — из уже
+// прочитанных названий.
+function renderCourseList() {
+    const query = searchEl.value.trim();
+    const found = filteredNames(courseNames, query);
+
+    coursesEl.textContent = '';
+    if (!found.length) {
+        const empty = document.createElement('div');
+        empty.className = 'empty';
+        empty.textContent = courseNames.length
+            ? 'Ничего не нашлось по запросу «' + query + '».'
+            : (coursesError || 'Список курсов пуст. Названия вписываются вручную в '
+                + COURSES_FILE + ' — расширение читает его и ничего в него не пишет.');
+        coursesEl.appendChild(empty);
+        return;
+    }
+    found.forEach((name, index) => {
+        // Тот же блок, что и у записи набора (.item > .head > .num +
+        // .question): списки выглядят одинаково без новых правил css.
+        const item = document.createElement('div');
+        item.className = 'item';
+
+        const head = document.createElement('div');
+        head.className = 'head';
+
+        const num = document.createElement('span');
+        num.className = 'num';
+        num.textContent = String(index + 1);
+
+        const title = document.createElement('span');
+        title.className = 'question';
+        title.textContent = name;
+
+        head.append(num, title);
+        item.append(head);
+        coursesEl.appendChild(item);
+    });
+}
+
+// Нижняя строка вкладки. Разбивки «сколько записей у какого курса» тут быть
+// не может: в базе нет поля с курсом, поэтому считаются названия из файла и
+// записи базы целиком. Считается именно файл, а не показанное поиском: это
+// справка о базе, а не о том, что сейчас на экране.
+async function renderCourses() {
+    const { names, error } = await readCourses();
+    courseNames = names;
+    coursesError = error;
+    renderCourseList();
+
+    const base = await baseSize();
+    const line = 'В базе сейчас ' + names.length + ' '
+        + plural(names.length, 'курс', 'курса', 'курсов')
+        + (base === null ? '' : ' — ' + base + ' '
+            + plural(base, 'запись', 'записи', 'записей'))
+        + '.';
+    // Ошибку внизу повторяем, только когда список всё-таки показан: если
+    // показывать нечего, она уже стоит вместо списка.
+    coursesNoteEl.textContent = (error && names.length ? error + ' ' : '') + line;
 }
 
 function say(text, bad) {
@@ -193,32 +334,19 @@ function renderList(records, groups) {
 
 async function render() {
     const records = await readHarvested();
-    const counts = { plain: 0, crossword: 0, matching: 0 };
-    records.forEach(record => {
-        const type = recordType(record);
-        counts[type] = (counts[type] || 0) + 1;
-    });
 
     const groups = groupRecords(records);
     // Сколько записей набора сгорит при слиянии: в каждой группе побеждает
-    // последняя, остальные выбрасываются.
+    // последняя, остальные выбрасываются. Счётчик записей отсюда убран —
+    // под заголовком осталась только эта строка, и только когда повторы есть.
     let dropped = 0;
     groups.forEach(list => { if (list.length > 1) dropped += list.length - 1; });
 
     renderList(records, groups);
-    const base = await baseSize();
-    const parts = [];
-    if (counts.plain) parts.push('обычных ' + counts.plain);
-    if (counts.crossword) parts.push('кроссвордов ' + counts.crossword);
-    if (counts.matching) parts.push('таблиц ' + counts.matching);
-
-    summaryEl.textContent = records.length
-        ? 'В наборе ' + records.length + ' ' + plural(records.length, 'запись', 'записи', 'записей')
-            + (parts.length ? ' (' + parts.join(', ') + ')' : '')
-            + (base === null ? '' : '. В базе сейчас ' + base + '.')
-            + (dropped ? ' Повторных вопросов: ' + dropped + ' — при слиянии '
-                + 'по каждому останется последняя запись.' : '')
-        : 'Набор пуст' + (base === null ? '.' : '. В базе сейчас ' + base + ' записей.');
+    summaryEl.textContent = dropped
+        ? 'Повторных вопросов: ' + dropped + ' — при слиянии по каждому '
+            + 'останется последняя запись.'
+        : '';
 
     exportBtn.disabled = !records.length;
     copyBtn.disabled = !records.length;
@@ -309,4 +437,12 @@ clearBtn.addEventListener('click', async () => {
     render();
 });
 
+TABS.forEach(tab => tab.button.addEventListener('click', () => showTab(tab.name)));
+
+// Поиск фильтрует уже прочитанный список — файл на каждую букву не читается.
+searchEl.addEventListener('input', renderCourseList);
+
+// Открываем «Курсы»: это витрина базы, и по умолчанию видно именно её.
+showTab('courses');
 render();
+renderCourses();

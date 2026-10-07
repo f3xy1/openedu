@@ -457,7 +457,7 @@ def show_menu():
     by_number = {}
     print()
     print('=' * MENU_WIDTH)
-    print('  OpenEdu Helper — что делаем?')
+    print('  Openedu Helper — что делаем?')
     print('=' * MENU_WIDTH)
     for section, actions in SECTIONS:
         print(f'\n  {section}')

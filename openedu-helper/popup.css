@@ -1,16 +1,134 @@
-/* Окно расширения: узкое, но список снятых ответов бывает длинным,
-   поэтому прокручивается только он, а кнопки всегда на виду. */
+/* Окно расширения: узкое, но список бывает длинным, поэтому прокручивается
+   только он, а кнопки всегда на виду.
+   Высота задана числом, а не по содержимому: раньше её определял список
+   записей, и окно прыгало при переключении вкладок — «Курсы» выходили заметно
+   ниже «Набора». Теперь обе панели растягиваются на одну и ту же высоту, а
+   внутри прокручивается список.
+   550, а не больше: браузер режет окно расширения по 600 px, и упереться в
+   этот предел значило бы получить вторую полосу прокрутки — уже у всего окна
+   целиком. */
+html, body {
+    height: 550px;
+}
+
 body {
+    box-sizing: border-box;
     width: 380px;
     margin: 0;
     padding: 10px 12px 12px;
+    display: flex;
+    flex-direction: column;
     font: 13px/1.4 "Segoe UI", system-ui, sans-serif;
     color: #1a1a1a;
 }
 
+h1,
+.tabs {
+    flex: none;
+}
+
 h1 {
-    margin: 0 0 2px;
+    margin: 0 0 8px;
     font-size: 14px;
+    text-align: center;
+}
+
+/* Вкладки окна. Селекторы идут с родителем (.tabs .tab), а не одиночным
+   .tab: общее правило для кнопок ниже — button:hover:not(:disabled) — на
+   одну ступень специфичнее и перебивало бы фон при наведении. Та же ловушка,
+   что была у крестика записи. */
+.tabs {
+    display: flex;
+    margin: 0 0 8px;
+    border-bottom: 1px solid #dcdcdc;
+}
+
+.tabs .tab {
+    flex: 1 1 0;
+    padding: 6px 0;
+    border: none;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    background: none;
+    color: #555;
+}
+
+.tabs .tab:hover:not(:disabled) {
+    background: #f2f2f2;
+}
+
+.tabs .tab.active {
+    border-bottom-color: #3b7fd0;
+    color: #1a1a1a;
+    font-weight: 600;
+}
+
+/* Панель вкладки занимает всю оставшуюся высоту — обе вкладки получают
+   одинаковую, чем бы ни были заполнены. */
+.pane {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Панель вкладки прячется атрибутом hidden. Правило задано явно и после
+   .tabs: у атрибута и у класса одинаковая сила, так что важен порядок. */
+.pane[hidden] {
+    display: none;
+}
+
+/* Поле поиска на вкладке «Курсы»: иконка лежит поверх поля слева, а у самого
+   поля слева увеличен отступ — так иконка стоит на месте при любом тексте и
+   не зависит от ширины шрифта. */
+.search {
+    position: relative;
+    flex: none;
+    margin: 0 0 8px;
+}
+
+.search-icon {
+    position: absolute;
+    left: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 13px;
+    height: 13px;
+    fill: none;
+    stroke: #999;
+    stroke-width: 1.6;
+    /* Клик по иконке должен попадать в поле, а не в неё. */
+    pointer-events: none;
+}
+
+.search input {
+    box-sizing: border-box;
+    width: 100%;
+    appearance: none;
+    padding: 5px 8px 5px 27px;
+    border: 1px solid #c8c8c8;
+    border-radius: 6px;
+    background: #fff;
+    color: inherit;
+    font: inherit;
+}
+
+.search input:focus {
+    outline: none;
+    border-color: #3b7fd0;
+}
+
+/* Строка под заголовком осталась под одно предупреждение — о повторах.
+   Когда предупреждать не о чем, строки быть не должно вместе с её отступом. */
+.summary:empty {
+    display: none;
+}
+
+.summary,
+.buttons,
+.status,
+.hint {
+    flex: none;
 }
 
 .summary {
@@ -18,8 +136,13 @@ h1 {
     color: #555;
 }
 
+/* Список растягивается на всё, что осталось от панели: высота у списка больше
+   не своя (раньше стояло max-height: 300px), иначе он не заполнял бы панель и
+   вкладки снова разъехались бы по высоте. min-height: 0 обязателен — без него
+   flex-элемент не даёт себя сжать и список вылез бы за окно вместо прокрутки. */
 .list {
-    max-height: 300px;
+    flex: 1 1 auto;
+    min-height: 0;
     overflow-y: auto;
     border: 1px solid #dcdcdc;
     border-radius: 6px;

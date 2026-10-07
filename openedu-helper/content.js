@@ -1,7 +1,7 @@
 // Версия видна в консоли страницы и доступна отладчику: по ней легко
 // убедиться, что на вкладке работает именно этот файл, а не старый.
-const SCRIPT_VERSION = 'v7.3';
-console.log(`🚀 OpenEdu Helper ${SCRIPT_VERSION} ЗАПУЩЕН!`);
+const SCRIPT_VERSION = 'v7.4';
+console.log(`🚀 Openedu Helper ${SCRIPT_VERSION} ЗАПУЩЕН!`);
 
 // Правила сравнения текста (нормализация, кавычки, формулы, ключи) живут в
 // normalize.js: он подключается в manifest.json ПЕРЕД content.js и делит с ним
